@@ -1,0 +1,157 @@
+{{- if .Values.CreateStorageClass }}
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: crc-csi-hostpath-provisioner-delete
+  annotations:
+    storageclass.kubernetes.io/is-default-class: 'false'
+    helm.sh/resource-policy: keep
+provisioner: kubevirt.io.hostpath-provisioner
+parameters:
+  storagePool: local
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+{{- end }}  
+---
+{{- if .Values.AnalysisNodeFS.enable }}
+# Placeholder for pv-shared-datadir filesystem PV
+{{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-shared-datadir
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep  
+  labels:
+    console.service: console-analysis-node
+spec:
+  accessModes:
+{{- if .Values.AnalysisNodeFS.enable }}
+    - ReadWriteMany
+  storageClassName: {{ .Values.FileClassName }}
+{{- else }}
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+{{- end }}  
+  resources:
+    requests:
+      storage: {{ .Values.size_shared_datadir }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-data
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.size_db_data }}
+  storageClassName: {{ .Values.DiskClassName }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-imagingviewer-v3-server-log
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep  
+  labels:
+    console.service: viewer-server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_imagingviewer_v3_server_log }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-imagingviewer-v3-etl-logs
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    console.service: viewer-etl
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_imagingviewer_v3_etl_logs }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-imagingviewer-v3-aimanager-logs
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    console.service: viewer-aimanager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_imagingviewer_v3_aimanager_logs }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-mcpserver-logs
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    console.service: mcp-server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_mcpserver_logs }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-imagingviewer-v3-api-logs
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    console.service: viewer-api
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_imagingviewer_v3_api_logs }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-extendproxy-data
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep 
+  labels:
+    console.service: extendproxy 
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.size_extendproxy_data }}
+  storageClassName: {{ .Values.DiskClassName }}

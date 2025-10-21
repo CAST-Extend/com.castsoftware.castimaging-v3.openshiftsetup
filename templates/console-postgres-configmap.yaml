@@ -1,0 +1,111 @@
+apiVersion: v1
+data:
+  postgresql.conf.sample: |
+    # -----------------------------
+    # PostgreSQL configuration file
+    # -----------------------------
+    
+    #------------------------------------------------------------------------------
+    # FILE LOCATIONS
+    #------------------------------------------------------------------------------
+    
+    #------------------------------------------------------------------------------
+    # CONNECTIONS AND AUTHENTICATION
+    #------------------------------------------------------------------------------
+    
+    listen_addresses = '*'
+    max_connections = 300
+    
+    #------------------------------------------------------------------------------
+    # RESOURCE USAGE (except WAL)
+    #------------------------------------------------------------------------------
+    
+    shared_buffers = 2GB
+    temp_buffers = 32MB
+    work_mem = 64MB
+    maintenance_work_mem = 512MB
+    effective_cache_size = 6GB
+    
+    #------------------------------------------------------------------------------
+    # WRITE-AHEAD LOG
+    #------------------------------------------------------------------------------
+    
+    fsync = off
+    synchronous_commit = off
+    full_page_writes = off
+    commit_delay = 10
+    checkpoint_completion_target = 0.9
+    max_wal_size = 4GB
+    min_wal_size = 1GB
+    
+    #------------------------------------------------------------------------------
+    # QUERY TUNING
+    #------------------------------------------------------------------------------
+    
+    cursor_tuple_fraction = 1.0
+    jit = off
+    
+    #------------------------------------------------------------------------------
+    # REPORTING AND LOGGING
+    #------------------------------------------------------------------------------
+    
+    log_destination = 'stderr'
+    logging_collector = on
+    log_checkpoints = on
+    log_line_prefix = '%t [%p]: [%l-1] '
+    log_temp_files = 1024kB
+    
+    #------------------------------------------------------------------------------
+    # AUTOVACUUM
+    #------------------------------------------------------------------------------
+    
+    autovacuum_vacuum_cost_limit = 200
+    
+    #------------------------------------------------------------------------------
+    # CLIENT CONNECTION DEFAULTS
+    #------------------------------------------------------------------------------
+    
+    bytea_output = 'escape'
+    standard_conforming_strings = on
+    
+    #------------------------------------------------------------------------------
+    # LOCK MANAGEMENT
+    #------------------------------------------------------------------------------
+    
+    max_locks_per_transaction = 4096
+    
+    #------------------------------------------------------------------------------
+    # CUSTOMIZED OPTIONS
+    #------------------------------------------------------------------------------
+    
+    auto_explain.log_min_duration = '60s'
+    auto_explain.log_nested_statements = on
+    auto_explain.log_verbose = on
+    auto_explain.log_buffers = on
+    auto_explain.log_analyze = on
+    shared_preload_libraries = 'auto_explain'
+kind: ConfigMap
+metadata:
+  name: console-v3-postgresqlconf
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+data:
+  init-db.sh: |
+    #!/bin/bash
+ 
+    set -e
+    
+    # Run initialization commands
+    psql -v ON_ERROR_STOP=1 --username "${POSTGRESQL_USER}" --dbname "${POSTGRESQL_DATABASE}" <<-EOSQL
+        CREATE USER IF NOT EXISTS operator WITH SUPERUSER PASSWORD 'CastAIP';
+        CREATE USER IF NOT EXISTS guest WITH PASSWORD 'WelcomeToAIP';
+        GRANT ALL PRIVILEGES ON DATABASE ${POSTGRESQL_DATABASE} TO operator;
+        CREATE USER IF NOT EXISTS keycloak WITH PASSWORD 'keycloak';
+        CREATE DATABASE keycloak;
+        GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+    EOSQL
+kind: ConfigMap
+metadata:
+  name: console-v3-init-db   
+  namespace: {{ .Release.Namespace }}

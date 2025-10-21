@@ -1,0 +1,133 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: viewer-etl
+  labels:
+    app: viewer-etl
+spec:
+  ports:
+  - name: http
+    port: 9001
+    targetPort: 9001
+  selector:
+    app: viewer-etl
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: viewer-etl
+    version: {{.Values.ViewerEtlImage.tag| default .Values.version}}
+  name: viewer-etl
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.ViewerEtlReplicaCount }}
+  selector:
+    matchLabels:
+      app: viewer-etl
+  template:
+    metadata:
+      labels:
+        app: viewer-etl
+    spec:
+      initContainers:
+        - name: neo4j-and-control-panel-healthcheck
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+{{- if .Values.EnablePostgresSSL }}
+            echo "Copy postgres SSL files."
+            cp /tmp/certs/* /etc/ssl/certs-postgres
+            ls -l /etc/ssl/certs-postgres
+{{- end }}
+            until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-control-panel to be healthy..."
+              sleep 2
+            done
+            echo "console-control-panel is healthy!"  
+            until wget --no-verbose --spider http://viewer-neo4j:7474; do 
+              echo "Waiting for neo4j..."
+              sleep 2
+            done
+            echo "viewer-neo4j is up!"
+            until curl -s http://viewer-server:9000/healthcheck | grep -q "I am alive"; do
+              echo "Waiting for viewer-server..."
+              sleep 2
+            done
+            echo "viewer-server is up!"
+            echo "Done."
+{{- if .Values.EnablePostgresSSL }}
+            - name: ssl-certs
+              mountPath: /tmp/certs
+              readOnly: true
+            - name: postgres-ssl-files
+              mountPath: /etc/ssl/certs-postgres
+{{- end }}
+        - name: init-folders
+          image: "{{.Values.ViewerEtlImage.name}}:{{.Values.ViewerEtlImage.tag}}"
+          imagePullPolicy: "{{.Values.ViewerEtlImage.pullPolicy}}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /opt/imaging/imaging-etl/* /etl-volume/ || true
+          volumeMounts:    
+            - name: imaging-etl-dir
+              mountPath: /etl-volume 
+      containers:
+        - env:
+{{- if .Values.EnablePostgresSSL }}
+            - name: CASTCONNECTIONEXTRAPARAMETERS
+              value: /etc/ssl/certs-postgres/sslconfig.ini
+{{- end }}
+{{- if .Values.ContextUrl.enable }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- end }}
+          image: "{{ .Values.ViewerEtlImage.name }}:{{ .Values.ViewerEtlImage.tag}}"
+          imagePullPolicy: "{{ .Values.ViewerEtlImage.pullPolicy }}"
+          command: ['sh', '-c', '/opt/imaging/imaging-etl/config/init.sh']
+          name: viewer-etl
+          ports:
+            - containerPort: 9001
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.ViewerEtlResources | nindent 12 }}
+          volumeMounts:
+            - name: logdir
+              mountPath: /opt/imaging/imaging-etl/logs
+            - name: imaging-etl-dir
+              mountPath: /opt/imaging/imaging-etl
+            - name: etlappconfig
+              mountPath: /opt/imaging/imaging-etl/config/app.config
+              subPath: app.config
+{{- if .Values.EnablePostgresSSL }}
+            - name: postgres-ssl-files
+              mountPath: /etc/ssl/certs-postgres
+              readOnly: true
+{{- end }}
+{{- if .Values.UseImagePullSecrets }}              
+      imagePullSecrets:
+        - name: imagepull-sec
+{{- end }}        
+      volumes:
+        - name: logdir
+          persistentVolumeClaim:
+            claimName: pvc-imagingviewer-v3-etl-logs
+        - name: imaging-etl-dir
+          emptyDir: {}
+        - name: etlappconfig
+          configMap:
+            name: etlappconfig
+            defaultMode: 0644
+{{- if .Values.EnablePostgresSSL }}
+        - name: ssl-certs
+          secret:
+            secretName: ssl-certs
+            defaultMode: 0644
+        - name: postgres-ssl-files
+          emptyDir: {}
+{{- end }}

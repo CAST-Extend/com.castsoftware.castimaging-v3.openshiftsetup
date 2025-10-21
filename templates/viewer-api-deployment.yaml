@@ -1,0 +1,88 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: viewer-api
+  labels:
+    app: viewer-api
+spec:
+  ports:
+  - name: http
+    port: 8070
+    targetPort: 8070
+  selector:
+    app: viewer-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: viewer-api
+    version: {{.Values.ViewerApiImage.tag| default .Values.version}}
+  name: viewer-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.ViewerApiReplicaCount }}
+  selector:
+    matchLabels:
+      app: viewer-api     
+  template:
+    metadata:
+      labels:
+        app: viewer-api
+    spec:
+      initContainers:
+        - name: neo4j-and-control-panel-healthcheck
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-control-panel to be healthy..."
+              sleep 2
+            done
+            echo "console-control-panel is healthy!"  
+            until wget --no-verbose --spider http://viewer-neo4j:7474; do 
+              echo "Waiting for neo4j..."
+              sleep 2
+            done
+            echo "viewer-neo4j is up!"
+          volumeMounts:
+            - name: logdir
+              mountPath: /opt/imaging/imaging-api/logs
+              readOnly: false
+      containers:
+        - env:
+{{- if .Values.ContextUrl.enable }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- end }}
+          image: "{{ .Values.ViewerApiImage.name }}:{{ .Values.ViewerApiImage.tag }}"
+          imagePullPolicy: "{{ .Values.ViewerApiImage.pullPolicy }}"
+          command: ['sh', '-c', "./imaging-api -CONFIG ./config/app.config"]
+          name: viewer-api
+          ports:
+            - containerPort: 8070
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.ViewerApiResources | nindent 12 }}
+          volumeMounts:
+            - name: logdir
+              mountPath: /opt/imaging/imaging-api/logs
+              readOnly: false
+            - name: apiappconfig
+              mountPath: /opt/imaging/imaging-api/config/app.config
+              subPath: app.config               
+      volumes:
+        - name: logdir
+          persistentVolumeClaim:
+            claimName: pvc-imagingviewer-v3-api-logs
+        - name: apiappconfig
+          configMap:
+            name: apiappconfig
+            defaultMode: 0644
+{{- if .Values.UseImagePullSecrets }}              
+      imagePullSecrets:
+        - name: imagepull-sec
+{{- end }}  

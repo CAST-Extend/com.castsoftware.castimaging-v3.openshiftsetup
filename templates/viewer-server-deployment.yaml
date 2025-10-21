@@ -1,0 +1,156 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: viewer-server
+  labels:
+    app: viewer-server
+spec:
+  ports:
+    - name: http
+      port: 8083
+      targetPort: 8080
+    - name: https
+      port: 443
+      targetPort: 443
+    - name: login
+      port: 9000
+      targetPort: 9000
+  selector:
+    app: viewer-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: viewer-server
+    version: {{.Values.ViewerServiceImage.tag| default .Values.version}}
+  name: viewer-server
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.ViewerServerReplicaCount }}
+  selector:
+    matchLabels:
+      app: viewer-server
+  template:
+    metadata:
+      labels:
+        app: viewer-server
+    spec:
+      initContainers:      
+        - name: neo4j-and-control-panel-healthcheck
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-control-panel to be healthy..."
+              sleep 2
+            done
+            echo "console-control-panel is healthy!"  
+            until wget --no-verbose --spider http://viewer-neo4j:7474; do 
+              echo "Waiting for neo4j..."
+              sleep 2
+            done
+            echo "viewer-neo4j is up!"
+        - name: neo4j-migration
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            echo "Running neo4j migration..."
+{{- if or (eq .Values.version "3.2.2") (eq .Values.version "3.2.3") }}
+            /home/imaging/3.2.3/Neo4jdatamigrate --log /home/imaging/logs/3.2.3-Neo4jdatamigrate.log --database neo4j --all --migrate --host viewer-neo4j
+{{- end }}
+{{- if or (eq .Values.version "3.3.0") (eq .Values.version "3.3.1") }}
+            /home/imaging/3.3.0/Neo4jdatamigrate --log /home/imaging/logs/3.3.0-Neo4jdatamigrate.log --database neo4j --all --migrate --host viewer-neo4j
+{{- end }}
+{{- if or (eq .Values.version "3.4.0") (eq .Values.version "3.4.1") (eq .Values.version "3.4.2") (eq .Values.version "3.4.3") (eq .Values.version "3.4.4") }}
+            /home/imaging/3.4.0/Neo4jdatamigrate --log /home/imaging/logs/3.4.0-Neo4jdatamigrate.log --database neo4j --all --migrate --host viewer-neo4j
+{{- end }}
+            cat /home/imaging/logs/*
+            echo "Done".
+          volumeMounts:
+            - name: upgrade-log
+              mountPath: /home/imaging/logs  
+        - name: init-folders
+          image: "{{.Values.ViewerServiceImage.name}}:{{.Values.ViewerServiceImage.tag}}"
+          imagePullPolicy: "{{.Values.ViewerServiceImage.pullPolicy}}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /opt/imaging/imaging-service/* /server-volume/ || true
+            cp -r /etc/nginx/* /nginx-volume/ || true
+          volumeMounts:
+            - name: server-data
+              mountPath: /server-volume    
+            - name: nginx
+              mountPath: /nginx-volume     
+      containers:
+        - image: "{{ .Values.ViewerServiceImage.name }}:{{ .Values.ViewerServiceImage.tag}}"
+          imagePullPolicy: "{{ .Values.ViewerServiceImage.pullPolicy }}"
+          command: ['sh', '-c', "sleep 60; /opt/imaging/config/init.sh"]
+          name: viewer-server
+          env:
+            - name: TIME_ZONE
+              value: "Europe/Paris"
+{{- if .Values.ContextUrl.enable }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- end }}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+            - containerPort: 9000
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.ViewerServerServiceResources | nindent 12 }}
+          volumeMounts:
+            - name: log
+              mountPath: /opt/imaging/imaging-service/logs
+            - name: server-data
+              mountPath: /opt/imaging/imaging-service
+            - name: nginx
+              mountPath: /etc/nginx
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: servernginxconf
+              mountPath: /opt/imaging/config/nginx/conf/nginx.conf
+              subPath: nginx.conf
+            - name: serverappconfig
+              mountPath: /opt/imaging/config/app.config
+              subPath: app.config
+{{- if .Values.UseImagePullSecrets }}               
+      imagePullSecrets:
+        - name: imagepull-sec
+{{- end }}        
+      volumes:
+        - name: log
+          persistentVolumeClaim:
+            claimName: pvc-imagingviewer-v3-server-log
+        - name: server-data
+          emptyDir: {}
+        - name: servernginxconf
+          configMap:
+            name: servernginxconf
+            defaultMode: 0644
+        - name: serverappconfig
+          configMap:
+            name: serverappconfig
+            defaultMode: 0644
+        - name: upgrade-log
+          emptyDir: {}
+        - name: nginx
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}

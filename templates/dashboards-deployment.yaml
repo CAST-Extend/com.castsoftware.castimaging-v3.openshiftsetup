@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    console.service: console-dashboards
+  name: console-dashboards
+  namespace: {{ .Release.Namespace }}  
+spec:
+  ports:
+    - name: "8087"
+      port: 8087
+      targetPort: 8087
+  selector:
+    console.service: console-dashboards  
+---  
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    console.service: console-dashboards
+    version: {{ .Values.ConsoleIntegratedDashboardsImage.tag| default .Values.version }}
+  name: console-dashboards
+  namespace: {{ .Release.Namespace }}  
+spec:
+  replicas: {{ .Values.DashboardReplicaCount }}
+  selector:
+    matchLabels:
+      console.service: console-dashboards
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        console.network/aip-network: "true"
+        console.service: console-dashboards
+    spec:
+      initContainers:             
+        - name: console-control-panel-and-authentication-service-healthcheck
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+{{- if .Values.EnablePostgresSSL }}
+            echo "Copy postgres SSL files."
+            cp /tmp/certs/* /etc/ssl/certs-postgres
+            chmod 0600 /etc/ssl/certs-postgres/client-key.pem
+            ls -l /etc/ssl/certs-postgres
+{{- end }}
+            until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-control-panel to be healthy..."
+              sleep 2
+            done
+            echo "console-control-panel is healthy!"
+            until curl -s http://console-authentication-service:8092/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-authentication-service to be healthy..."
+              sleep 2
+            done
+            echo "console-authentication-service is healthy!"
+            until curl -s http://console-gateway-service:8090/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-gateway-service to be healthy..."
+              sleep 2
+            done                          
+            echo "console-gateway-service is healthy!"
+        - name: init-folders
+          image: "{{.Values.ConsoleIntegratedDashboardsImage.name}}:{{.Values.ConsoleIntegratedDashboardsImage.tag}}"
+          imagePullPolicy: "{{.Values.ConsoleIntegratedDashboardsImage.pullPolicy}}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /app/resources/* /dashboard-volume/ || true
+          volumeMounts:    
+            - name: app-resources
+              mountPath: /dashboard-volume 
+{{- if .Values.EnablePostgresSSL }}
+            - name: ssl-certs
+              mountPath: /tmp/certs
+              readOnly: true
+            - name: postgres-ssl-files
+              mountPath: /etc/ssl/certs-postgres
+{{- end }}
+      containers:
+        - env:
+            - name: HOST_HOSTNAME
+              value: console-dashboards
+            - name: PORT_DASHBOARDS
+              value: "8087"
+            - name: HOST_CONTROL_PANEL
+              value: console-control-panel
+            - name: PORT_CONTROL_PANEL
+              value: "8098"
+{{- if .Values.CustomPostgres.enable }}
+            - name: DB_HOST
+              value: {{ .Values.CustomPostgres.host }}
+            - name: DB_PORT
+              value: "{{ .Values.CustomPostgres.port }}"               
+{{- else }}
+            - name: DB_HOST
+              value: console-postgres
+            - name: DB_PORT
+              value: "2285"              
+{{- end }}
+            - name: DB_NAME
+              value: postgres
+            - name: DB_USER
+              value: operator
+            - name: DB_PASS
+              value: "{{ .Values.OperatorDbPasswordCrypted2 }}"
+            - name: HOST_GATEWAY
+              value: console-gateway-service
+            - name: PORT_GATEWAY
+              value: "8090"
+            - name: HOST_AUTH_SERVICE
+              value: console-authentication-service
+            - name: PORT_AUTH_SERVICE
+              value: "8092"
+{{- if .Values.EnablePostgresSSL }}
+            - name: CASTCONNECTIONEXTRAPARAMETERS
+              value: /etc/ssl/certs-postgres/sslconfig.ini
+{{- end }}
+          image: "{{ .Values.ConsoleIntegratedDashboardsImage.name }}:{{ .Values.ConsoleIntegratedDashboardsImage.tag}}"
+          imagePullPolicy: "{{ .Values.ConsoleIntegratedDashboardsImage.pullPolicy }}"
+          name: dashboards
+          ports:
+            - containerPort: 8087
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.DashboardsResources | nindent 12 }}
+          volumeMounts:
+            - name: app-resources
+              mountPath: /app/resources
+{{- if .Values.EnablePostgresSSL }}
+            - name: postgres-ssl-files
+              mountPath: /etc/ssl/certs-postgres
+              readOnly: true
+{{- end }}
+      restartPolicy: Always
+{{- if .Values.UseImagePullSecrets }}       
+      imagePullSecrets:
+        - name: imagepull-sec  
+{{- end }}
+      volumes:
+        - name: app-resources
+          emptyDir: {}
+{{- if .Values.EnablePostgresSSL }}
+        - name: ssl-certs
+          secret:
+            secretName: ssl-certs
+            defaultMode: 0644
+        - name: postgres-ssl-files
+          emptyDir: {}
+{{- end }}

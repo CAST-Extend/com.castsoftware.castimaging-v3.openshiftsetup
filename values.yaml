@@ -1,0 +1,266 @@
+# Default values for imaging-system.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+version: 3.4.4
+
+####################################################################################
+#
+# Define the namespace here
+namespace: castimaging-v3
+#
+# External network access
+FrontEndHost: http://imaging-console.fr  # hostname only: E.g. https://my-host.com 
+#                                         No context path, no trailing "/"
+Routes:
+  enable: false
+  tls: false   # If enabled, prepare certificates and add this to "helm install" command:
+#                --set-file tls.certificate=path-to-certificate-files/fullchain.pem --set-file tls.key=path-to-certificate-files/privkey.pem
+#
+# LoadBalancer creation (for console-gateway, extendproxy, mcp-server):
+CreateLoadBalancer: false
+#
+# OPTIONAL - ExtendProxy
+ExtendProxy:
+  enable: false
+  exthostname_url: http://imaging-extend.fr # URL for external access to extendproxy
+#
+# OPTIONAL - MCP Server
+McpServer:
+  enable: false
+  exthostname_url: http://imaging-mcp.fr # URL for external access to MCP Server
+#
+# Context URL
+ContextUrl:
+  enable: false
+  appcontext: /mycontext   # Should start with "/"  Eg. "/cast"
+#
+# OPTIONAL - Use custom Trust Store
+UseCustomTrustStore: false  
+#
+# OPTIONAL - Access Private Repo with Secret
+UseImagePullSecrets: false
+Base64EncodedDockerconfigjson: 
+#
+# OPTIONAL - Enable shared File Storage for analysis-node
+# Important note: Extra cluster configuration is required before you can enable this feature
+#                 Please refer to the documentation before modifying below parameters.
+AnalysisNodeFS:
+  enable: false  # Do not change if castimaging is already deployed
+#
+# CAST Storage Class names
+CreateStorageClass: false
+DiskClassName: crc-csi-hostpath-provisioner
+FileClassName: crc-csi-hostpath-provisioner
+#
+# Postgres
+CastStorageService: # If enabled, postgres will be deployed in this helm chart
+  enable: true
+CustomPostgres:     # If enabled, external postgres server will be used 
+  enable: false     # IMPORTANT NOTE: init-db.sh script defined in console-postgres-configmap.yaml will need to be executed manually before deployment
+  host: mypostgreshostname
+  port: 2285
+#
+# Multi Tenancy
+MultiTenancyEnabled: false
+#
+# CAST Operator password has to be encrypted using CAST aip-encryption-tool (crypted2):
+OperatorDbPasswordCrypted2: CRYPTED2:90B1A6EC1618661401B724DB5AC34595
+####################################################################################
+
+#
+# Size of volumes
+#
+size_castdir: 100Gi                       # Default: 100Gi
+size_shared_datadir: 100Gi                # Default: 100Gi
+size_db_data: 128Gi                       # Default: 128Gi
+size_imagingviewer_v3_server_log: 1Gi     # Default: 1Gi
+size_imagingviewer_v3_etl_logs: 10Gi      # Default: 10Gi
+size_imagingviewer_v3_aimanager_logs: 2Gi # Default: 2Gi
+size_imagingviewer_v3_api_logs: 2Gi       # Default: 2Gi
+size_extendproxy_data: 10Gi               # Default: 10Gi
+size_neo4jdata: 100Gi                     # Default: 100Gi
+size_mcpserver_logs: 2Gi                  # Default: 2Gi
+
+#
+# Console  
+#
+ConsolePostgresReplicaCount: 1
+SSOServiceReplicaCount: 1
+ConsoleServiceReplicaCount: 1
+GatewayServiceReplicaCount: 1
+AnalysisNodeReplicaCount: 1
+ControlPaneReplicaCount: 1
+AuthenticationServiceReplicaCount: 1
+IntegratedDashboardsReplicaCount: 1
+ExtendProxyReplicaCount: 1
+
+#
+# Viewer
+#
+ViewerNeo4jReplicaCount: 1
+ViewerServerReplicaCount: 1
+ViewerEtlReplicaCount: 1
+ViewerAiManagerReplicaCount: 1
+McpServerReplicaCount: 1
+
+#
+# Console images
+#
+InitUtilImage:
+  name: castimaging/init-util
+  tag: "1.2.4"
+  pullPolicy: IfNotPresent  
+ConsolePostgresImage:
+  name: registry.redhat.io/rhel8/postgresql-15
+  tag: "latest"
+  pullPolicy: IfNotPresent
+ConsoleSSOServiceImage:
+  name: castimaging/sso-service
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ConsoleServiceImage:
+  name: castimaging/console
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ConsoleGatewayServiceImage:
+  name: castimaging/gateway
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent  
+ConsoleAnalysisNodeImage:
+  name: castimaging/analysis-node
+  tag: "3.4.4_core8.4.6"
+  pullPolicy: IfNotPresent
+ConsoleControlPaneImage:
+  name: castimaging/admin-center
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ConsoleAuthenticationServiceImage:
+  name: castimaging/auth-service
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ConsoleIntegratedDashboardsImage:
+  name: castimaging/dashboards-v3
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+  
+#
+# Viewer images
+#
+ViewerNeo4jImage:
+  name: castimaging/neo4j
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ViewerServiceImage:
+  name: castimaging/viewer
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ViewerEtlImage:
+  name: castimaging/etl-service
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent  
+ViewerAiManagerImage:
+  name: castimaging/ai-service
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent
+ViewerApiImage:
+  name: castimaging/imaging-apis
+  tag: "3.4.4"
+  pullPolicy: Always 
+McpServerImage:
+  name: castimaging/imaging-mcp-server
+  tag: "3.4.4"
+  pullPolicy: IfNotPresent 
+#
+# ExtendProxy Image
+#
+ExtendProxyImage:
+  name: castimaging/extend-proxy
+  tag: "2.2.4.2093"
+  pullPolicy: IfNotPresent 
+
+#
+# Console resources
+#
+# postgres_shmsize: 4G
+# ConsolePostgresResources:
+#   requests:
+#     cpu: 0.5
+#     memory: 8G
+# SSOServiceResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 1G
+# ConsoleServiceResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 500M
+# GatewayServiceResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 500M
+# AnalysisNode_shmsize: 1G
+# AnalysisNodeResources:
+#   requests:
+#     cpu: 0.5
+#     memory: 8G
+# ControlPanelResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 800M
+# AuthenticationServiceResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 500M
+# IntegratedDashboardsResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 600M
+
+#
+# Viewer resources
+#
+# ViewerNeo4jResources:
+#   requests:
+#     cpu: 0.5
+#     memory: 16G
+# ViewerServerServiceResources:
+#   requests:
+#     cpu: 0.2
+#     memory: 500M
+# ViewerEtlResources:
+#   requests:
+#     cpu: 0.2
+#     memory: 500M
+# ViewerAiManagerResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 400M
+# ViewerApiResources:
+#   requests:
+#     cpu: 0.1
+#     memory: 200M
+# McpServerResources:
+#   requests:
+#     cpu: 0.2
+#     memory: 400M
+#
+# ExtendProxy resources
+#
+# ExtendProxyResources:
+#   requests:
+#     cpu: 0.2
+#     memory: 200M    
+
+#
+# Analysis folders (do not modify)
+#
+anadir:
+  datadirmount: /opt/cast/shared
+  deploy:       /opt/cast/shared/deploy
+  delivery:     /opt/cast/shared/delivery
+  common:       /opt/cast/shared/common-data
+  castdirmount: /usr/share/CAST
+  logs:         /usr/share/CAST/CAST/Logs
+  lisa:         /usr/share/CAST/CASTMS/LISA
+  extensions:   /usr/share/CAST/Extensions

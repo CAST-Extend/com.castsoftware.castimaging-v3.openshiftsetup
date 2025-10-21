@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    console.service: console-gateway-service
+  name: console-gateway-service
+  namespace: {{ .Release.Namespace }}  
+spec:
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    console.service: console-gateway-service
+{{- if .Values.CreateLoadBalancer }}
+  type: LoadBalancer
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    console.service: console-gateway-service
+    version: {{ .Values.ConsoleGatewayServiceImage.tag| default .Values.version }}
+  name: console-gateway-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.GatewayServiceReplicaCount }}
+  selector:
+    matchLabels:
+      console.service: console-gateway-service
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        console.network/aip-network: "true"
+        console.service: console-gateway-service
+    spec:
+      initContainers:
+      - name: console-control-panel-healthcheck
+        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+            echo "Waiting for console-control-panel to be healthy..."
+            sleep 2
+          done
+          echo "console-control-panel is healthy!"    
+      containers:
+        - env:
+            - name: HOST_GATEWAY
+              value: console-gateway-service
+            - name: PORT_GATEWAY
+              value: "8090"
+            - name: HOST_CONTROL_PANEL
+              value: console-control-panel
+            - name: PORT_CONTROL_PANEL
+              value: "8098"
+            - name: HOST_KEYCLOAK
+              value: console-sso-service
+            - name: PORT_KEYCLOAK
+              value: "8096"
+{{- if .Values.ContextUrl.enable }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- end }}
+          image: "{{ .Values.ConsoleGatewayServiceImage.name }}:{{ .Values.ConsoleGatewayServiceImage.tag}}"
+          imagePullPolicy: "{{ .Values.ConsoleGatewayServiceImage.pullPolicy }}"
+          name: console-gateway-service
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8090
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8090
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          ports:
+            - containerPort: 8090
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.GatewayServiceResources | nindent 12 }}
+      restartPolicy: Always
+{{- if .Values.UseImagePullSecrets }}       
+      imagePullSecrets:
+        - name: imagepull-sec 
+{{- end }}         

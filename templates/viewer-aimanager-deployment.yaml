@@ -1,0 +1,120 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: viewer-aimanager
+  labels:
+    app: viewer-aimanager
+spec:
+  ports:
+  - name: http
+    port: 8082
+    targetPort: 8082
+  selector:
+    app: viewer-aimanager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: viewer-aimanager
+    version: {{.Values.ViewerAiManagerImage.tag| default .Values.version}}
+  name: viewer-aimanager
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.ViewerAiManagerReplicaCount }}
+  selector:
+    matchLabels:
+      app: viewer-aimanager     
+  template:
+    metadata:
+      labels:
+        app: viewer-aimanager
+    spec:
+      initContainers:
+        - name: neo4j-and-control-panel-healthcheck
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+              echo "Waiting for console-control-panel to be healthy..."
+              sleep 2
+            done
+            echo "console-control-panel is healthy!"  
+            until wget --no-verbose --spider http://viewer-neo4j:7474; do 
+              echo "Waiting for neo4j..."
+              sleep 2
+            done
+            echo "viewer-neo4j is up!"
+            OPERATOR_PASSWORD=$(cat /opt/secrets/operator-db-password )
+            ESCAPED_OPERATOR_PASSWORD=$(printf '%s\n' "$OPERATOR_PASSWORD" | sed -e 's/[\/&]/\\&/g')
+            cat /opt/imaging/open_ai-manager/config/app.config | sed "s/dbpassword-placeholder/$ESCAPED_OPERATOR_PASSWORD/g" > /updated-config/app.config
+            echo "app.config updated."
+          volumeMounts:
+            - name: logdir
+              mountPath: /opt/imaging/open_ai-manager/logs
+              readOnly: false
+            - name: openaiappconfig
+              mountPath: /opt/imaging/open_ai-manager/config/app.config
+              subPath: app.config
+            - name: updated-config-volume
+              mountPath: /updated-config              
+            - name: db-creds
+              mountPath: /opt/secrets
+              readOnly: true
+        - name: init-folders
+          image: "{{.Values.ViewerAiManagerImage.name}}:{{.Values.ViewerAiManagerImage.tag}}"
+          imagePullPolicy: "{{.Values.ViewerAiManagerImage.pullPolicy}}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            cp -r /opt/imaging/open_ai-manager/* /open-ai-volume/ || true
+          volumeMounts:    
+            - name: open-ai-dir
+              mountPath: /open-ai-volume 
+      containers:
+        - env:
+{{- if .Values.ContextUrl.enable }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- end }}
+          image: "{{ .Values.ViewerAiManagerImage.name }}:{{ .Values.ViewerAiManagerImage.tag}}"
+          imagePullPolicy: "{{ .Values.ViewerAiManagerImage.pullPolicy }}"
+          command: ['sh', '-c', "/opt/imaging/open_ai-manager/config/init.sh"]
+          name: viewer-aimanager
+          ports:
+            - containerPort: 8082
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.ViewerAiManagerResources | nindent 12 }}
+          volumeMounts:
+            - name: logdir
+              mountPath: /opt/imaging/open_ai-manager/logs
+              readOnly: false
+            - name: open-ai-dir
+              mountPath: /opt/imaging/open_ai-manager
+            - name: updated-config-volume
+              mountPath: /opt/imaging/open_ai-manager/config/app.config
+              subPath: app.config            
+{{- if .Values.UseImagePullSecrets }}               
+      imagePullSecrets:
+        - name: imagepull-sec
+{{- end }}        
+      volumes:
+        - name: logdir
+          persistentVolumeClaim:
+            claimName: pvc-imagingviewer-v3-aimanager-logs
+        - name: updated-config-volume
+          emptyDir: {}            
+        - name: openaiappconfig
+          configMap:
+            name: openaiappconfig
+            defaultMode: 0644
+        - name: db-creds
+          secret:
+            secretName: imaging-pwd-sec
+        - name: open-ai-dir
+          emptyDir: {}

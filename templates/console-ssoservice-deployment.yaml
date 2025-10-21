@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    console.service: console-sso-service
+  name: console-sso-service
+  namespace: {{ .Release.Namespace }}  
+spec:
+  ports:
+    - name: "8096"
+      port: 8096
+      targetPort: 8080
+  selector:
+    console.service: console-sso-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    console.service: console-sso-service
+    version: {{ .Values.ConsoleSSOServiceImage.tag| default .Values.version }}
+  name: console-sso-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.SSOServiceReplicaCount }}
+  selector:
+    matchLabels:
+      console.service: console-sso-service
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        console.network/aip-network: "true"
+        console.service: console-sso-service
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+{{- if .Values.CustomPostgres.enable }}
+          until pg_isready -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }}; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+{{- else }}
+          until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+{{- end }}
+      containers:
+        - env:       
+{{- if .Values.CustomPostgres.enable }}
+            - name: KC_DB_URL
+              value: jdbc:postgresql://{{ .Values.CustomPostgres.host }}:{{ .Values.CustomPostgres.port }}/keycloak
+{{- else }}
+            - name: KC_DB_URL
+              value: jdbc:postgresql://console-postgres:2285/keycloak
+{{- end }} 
+            - name: KC_DB_USERNAME
+              value: operator
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: operator-db-password
+            - name: KC_HTTP_RELATIVE_PATH
+              value: /auth
+            - name: KEYCLOAK_ADMIN
+              value: admin
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: keycloak-admin-password
+            - name: KC_PROXY 
+              value: "edge"
+            - name: PROXY_ADDRESS_FORWARDING
+              value: "true"             
+{{- if .Values.ContextUrl.enable }}
+            - name: KC_HOSTNAME_ADMIN_URL
+              value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}/auth
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
+            - name: KC_HOSTNAME_URL
+              value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}/auth
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
+            - name: PUBLIC_URL
+              value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}
+{{- else }}
+            - name: KC_PROXY_HEADERS
+              value: "forwarded"
+            - name: KC_HOSTNAME
+              value: {{ .Values.FrontEndHost }}/auth
+            - name: KC_HOSTNAME_ADMIN
+              value: {{ .Values.FrontEndHost }}/auth
+            - name: KEYCLOAK_FRONTEND_URL
+              value: {{ .Values.FrontEndHost }}/auth
+{{- end }}  
+
+          image: "{{ .Values.ConsoleSSOServiceImage.name }}:{{ .Values.ConsoleSSOServiceImage.tag}}"
+          imagePullPolicy: "{{ .Values.ConsoleSSOServiceImage.pullPolicy }}"
+          name: console-sso-service
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.SSOServiceResources | nindent 12 }}
+      restartPolicy: Always
+{{- if .Values.UseImagePullSecrets }}       
+      imagePullSecrets:
+        - name: imagepull-sec  
+{{- end }}        

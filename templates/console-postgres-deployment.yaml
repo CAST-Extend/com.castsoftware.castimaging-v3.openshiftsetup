@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    console.service: console-postgres
+  name: console-postgres
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - name: "2285"
+      port: 2285
+      targetPort: 5432
+  selector:
+    console.service: console-postgres
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-init-job
+  namespace: {{ .Release.Namespace }}
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: postgres-init
+          image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag}}"
+          env:
+            - name: PGHOST
+              value: "console-postgres"
+            - name: PGPORT
+              value: "2285"
+            - name: PGUSER
+              value: "postgres"
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: postgres-db-password 
+            - name: PGDATABASE
+              value: "postgres"
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
+                echo "PostgreSQL is not ready yet, waiting..."
+                sleep 1
+              done
+              
+              echo "PostgreSQL is ready, running initialization..."
+              psql -v ON_ERROR_STOP=1 -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE <<-EOSQL
+                -- Create users only if they don't exist
+                DO \$\$
+                BEGIN
+                  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'operator') THEN
+                    CREATE USER operator WITH SUPERUSER PASSWORD 'CastAIP';
+                  END IF;
+                  
+                  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'guest') THEN
+                    CREATE USER guest WITH PASSWORD 'WelcomeToAIP';
+                  END IF;
+                  
+                  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
+                    CREATE USER keycloak WITH PASSWORD 'keycloak';
+                  END IF;
+                END
+                \$\$;
+
+                -- Grant privileges (idempotent operation)
+                GRANT ALL PRIVILEGES ON DATABASE postgres TO operator;
+
+                -- Create database only if it doesn't exist
+                SELECT 'CREATE DATABASE keycloak'
+                WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+
+                -- Grant privileges on keycloak database
+                GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+              EOSQL
+              
+              echo "Database initialization completed successfully!"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    console.service: console-postgres
+  name: console-postgres
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      console.service: console-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        console.network/aip-network: "true"
+        console.service: console-postgres
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - env:
+            - name: POSTGRESQL_USER
+              value: postgres
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: postgres-db-password 
+            - name: POSTGRESQL_DATABASE
+              value: postgres
+          image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag}}"
+          imagePullPolicy: "IfNotPresent"
+          livenessProbe:
+            exec:
+              command: 
+                - /usr/libexec/check-container
+                - --live
+            failureThreshold: 5
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - /usr/libexec/check-container
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+          name: console-postgres
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.ConsolePostgresResources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /var/lib/pgsql/data
+              name: db-data
+            - name: pgconf
+              mountPath: "/opt/app-root/src/postgresql-cfg/postgresql.conf"
+              subPath: postgresql.conf.sample
+            - name: pginit
+              mountPath: "/opt/app-root/src/postgresql-start"
+              subPath: init-db.sh
+            - name: dshm
+              mountPath: /dev/shm
+      restartPolicy: Always
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: db-data
+        - name: pgconf
+          configMap:
+            name: console-v3-postgresqlconf
+            defaultMode: 0644
+        - name: pginit
+          configMap:
+            name: console-v3-init-db
+            defaultMode: 0755
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.postgres_shmsize }}

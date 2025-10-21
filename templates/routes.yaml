@@ -1,0 +1,74 @@
+{{- if .Values.Routes.enable }}
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: castimaging-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ (urlParse .Values.FrontEndHost).host }}
+  path: /
+  to:
+    kind: Service
+    name: console-gateway-service
+    weight: 100
+  port:
+    targetPort: '8090'
+    {{- if .Values.Routes.tls }}
+  tls:
+    termination: edge
+    certificate: {{ .Values.tls.certificate | quote }}
+    key: {{ .Values.tls.key | quote }}
+    insecureEdgeTerminationPolicy: None
+    {{- end }}
+  wildcardPolicy: None
+---
+  {{- if .Values.ExtendProxy.enable }}
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: extendproxy-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ (urlParse .Values.ExtendProxy.exthostname_url).host }}
+  path: /
+  to:
+    kind: Service
+    name: extendproxy
+    weight: 100
+  port:
+    targetPort: '8085'
+    {{- if .Values.Routes.tls }}
+  tls:
+    termination: edge
+    certificate: {{ .Values.tls.certificate | quote }}
+    key: {{ .Values.tls.key | quote }}
+    insecureEdgeTerminationPolicy: None
+    {{- end }}
+  wildcardPolicy: None
+  {{- end }}
+---
+  {{- if .Values.McpServer.enable }}
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: mcp-server-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ (urlParse .Values.McpServer.exthostname_url).host }}
+  path: /
+  to:
+    kind: Service
+    name: mcp-server
+    weight: 100
+  port:
+    targetPort: '8282'
+    {{- if .Values.Routes.tls }}
+  tls:
+    termination: edge
+    certificate: {{ .Values.tls.certificate | quote }}
+    key: {{ .Values.tls.key | quote }}
+    insecureEdgeTerminationPolicy: None
+    {{- end }}
+  wildcardPolicy: None
+  {{- end }}
+{{- end }}

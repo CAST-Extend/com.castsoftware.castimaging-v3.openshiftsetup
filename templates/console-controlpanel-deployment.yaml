@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    console.service: console-control-panel
+  name: console-control-panel
+  namespace: {{ .Release.Namespace }}  
+spec:
+  ports:
+    - name: "2381"
+      port: 2381
+      targetPort: 2381
+    - name: "8098"
+      port: 8098
+      targetPort: 8098
+  selector:
+    console.service: console-control-panel
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    console.service: console-control-panel
+    version: {{ .Values.ConsoleControlPaneImage.tag| default .Values.version }}
+  name: console-control-panel
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.ControlPaneReplicaCount }}
+  selector:
+    matchLabels:
+      console.service: console-control-panel
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        console.network/aip-network: "true"
+        console.service: console-control-panel
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+{{- if .Values.CustomPostgres.enable }}
+          until pg_isready -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }}; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+{{- else }}
+          until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+{{- end }}
+      - name: postgres-scripts
+        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+        env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: imaging-pwd-sec
+                key: operator-db-password
+        command:
+        - /bin/sh
+        - -c
+        - |
+{{- if .Values.EnablePostgresSSL }}
+          echo "Copy postgres SSL files."
+          cp /tmp/certs/* /etc/ssl/certs-postgres
+          chmod 0600 /etc/ssl/certs-postgres/client-key.pem
+          ls -l /etc/ssl/certs-postgres
+{{- end }}
+          echo "Running context URL updates..."
+{{- if .Values.CustomPostgres.enable }}
+          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d postgres -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
+          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d keycloak -f /home/imaging/sql/contexturl-keycloak-update-script.sql
+{{- else }}
+          psql -h console-postgres -p 2285 -U operator -d postgres -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
+          psql -h console-postgres -p 2285 -U operator -d keycloak -f /home/imaging/sql/contexturl-keycloak-update-script.sql
+{{- end }}
+          echo "Done."
+        volumeMounts:
+          - name: contexturl-controlpanel-update-script
+            mountPath: /home/imaging/sql/contexturl-controlpanel-update-script.sql
+            subPath: contexturl-controlpanel-update-script.sql
+          - name: contexturl-keycloak-update-script
+            mountPath: /home/imaging/sql/contexturl-keycloak-update-script.sql
+            subPath: contexturl-keycloak-update-script.sql
+{{- if .Values.EnablePostgresSSL }}
+          - name: ssl-certs
+            mountPath: /tmp/certs
+            readOnly: true
+          - name: postgres-ssl-files
+            mountPath: /etc/ssl/certs-postgres
+{{- end }}
+      containers:
+        - env:
+            - name: HOST_AUTH_SERVICE
+              value: console-authentication-service
+            - name: PORT_AUTH_SERVICE
+              value: "8092"
+            - name: HOST_CONTROL_PANEL
+              value: console-control-panel
+            - name: PORT_CONTROL_PANEL
+              value: "8098"
+{{- if .Values.CustomPostgres.enable }}
+            - name: DB_HOST
+              value: {{ .Values.CustomPostgres.host }}
+            - name: DB_PORT
+              value: "{{ .Values.CustomPostgres.port }}"               
+{{- else }}
+            - name: DB_HOST
+              value: console-postgres
+            - name: DB_PORT
+              value: "2285"              
+{{- end }}
+            - name: DB_ENCRYPTED_PASSWORD
+              value: "{{ .Values.OperatorDbPasswordCrypted2 }}"
+            - name: HOST_CONSOLE
+              value: console-service
+            - name: PORT_CONSOLE
+              value: "8091" 
+            - name: DELIVERY_FOLDER
+              value: {{ .Values.anadir.delivery }}
+            - name: DEPLOY_FOLDER
+              value: {{ .Values.anadir.deploy }}
+            - name: SHARED_FOLDER
+              value: {{ .Values.anadir.common }}
+{{- if .Values.ContextUrl.enable }}
+            - name: PUBLIC_URL
+              value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}/   # Should end with "/"
+            - name: KEYCLOAK_URI
+              value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}
+{{- else }}
+            - name: KEYCLOAK_URI
+              value: {{ .Values.FrontEndHost }}
+{{- end }}
+{{- if .Values.EnablePostgresSSL }}
+            - name: CASTCONNECTIONEXTRAPARAMETERS
+              value: /etc/ssl/certs-postgres/sslconfig.ini
+{{- end }}
+          image: "{{ .Values.ConsoleControlPaneImage.name }}:{{ .Values.ConsoleControlPaneImage.tag}}"
+          imagePullPolicy: "{{ .Values.ConsoleControlPaneImage.pullPolicy }}"
+          name: console-control-panel
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8098
+              scheme: HTTP
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8098
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          ports:
+            - containerPort: 2381
+              protocol: TCP
+            - containerPort: 8098
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.ControlPanelResources | nindent 12 }}
+{{- if .Values.EnablePostgresSSL }}
+          volumeMounts:
+            - name: postgres-ssl-files
+              mountPath: /etc/ssl/certs-postgres
+              readOnly: true
+{{- end }}
+      restartPolicy: Always
+      volumes:
+        - name: contexturl-controlpanel-update-script
+          configMap:
+            name: contexturl-controlpanel-update-script
+            defaultMode: 0755
+        - name: contexturl-keycloak-update-script
+          configMap:
+            name: contexturl-keycloak-update-script
+            defaultMode: 0755
+{{- if .Values.EnablePostgresSSL }}
+        - name: ssl-certs
+          secret:
+            secretName: ssl-certs
+            defaultMode: 0644
+        - name: postgres-ssl-files
+          emptyDir: {}
+{{- end }}
+{{- if .Values.UseImagePullSecrets }}       
+      imagePullSecrets:
+        - name: imagepull-sec  
+{{- end }}        

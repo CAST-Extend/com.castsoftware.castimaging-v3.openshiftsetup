@@ -1,0 +1,167 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    console.service: console-authentication-service
+  name: console-authentication-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - name: "8092"
+      port: 8092
+      targetPort: 8092
+  selector:
+    console.service: console-authentication-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    console.service: console-authentication-service
+    version: {{ .Values.ConsoleAuthenticationServiceImage.tag| default .Values.version }}
+  namespace: {{ .Release.Namespace }}
+  name: console-authentication-service
+spec:
+  replicas: {{ .Values.AuthenticationServiceReplicaCount }}
+  selector:
+    matchLabels:
+      console.service: console-authentication-service
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        console.network/aip-network: "true"
+        console.service: console-authentication-service
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+{{- if .Values.CustomPostgres.enable }}
+          until pg_isready -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }}; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+{{- else }}
+          until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+{{- end }}
+      - name: console-control-panel-healthcheck
+        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          until curl -s http://console-control-panel:8098/actuator/health | grep -q '"status":"UP"'; do
+            echo "Waiting for console-control-panel to be healthy..."
+            sleep 10
+          done
+          echo "console-control-panel is healthy!"       
+      containers:
+        - env:
+{{- if .Values.UseCustomTrustStore }}
+            - name: USE_CUSTOM_TRUSTSTORE
+              value: "true"
+            - name: TRUSTSTORE_PATH
+              value: /cast/truststore.jks
+            - name: TRUSTSTORE_PASSWORD
+              value: castapi
+{{- end }}                      
+            - name: HOST_AUTH_SERVICE
+              value: console-authentication-service
+            - name: PORT_AUTH_SERVICE
+              value: "8092"
+            - name: HOST_CONTROL_PANEL
+              value: console-control-panel
+            - name: PORT_CONTROL_PANEL
+              value: "8098"
+            - name: HOST_KEYCLOAK
+              value: console-sso-service
+            - name: PORT_KEYCLOAK
+              value: "8096"
+{{- if .Values.CustomPostgres.enable }}
+            - name: DB_HOST
+              value: {{ .Values.CustomPostgres.host }}
+            - name: DB_PORT
+              value: "{{ .Values.CustomPostgres.port }}"               
+{{- else }}
+            - name: DB_HOST
+              value: console-postgres
+            - name: DB_PORT
+              value: "2285"
+{{- end }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: operator-db-password
+            - name: KC_USER
+              value: "admin"
+            - name: KC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: keycloak-admin-password
+            - name: HOST_GATEWAY
+              value: console-gateway-service
+            - name: PORT_GATEWAY
+              value: "8090"
+            - name: MULTI_TENANCY_ENABLED
+              value: "{{ .Values.MultiTenancyEnabled }}"
+{{- if .Values.ContextUrl.enable }}
+            - name: NGINX_HOST
+              value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- else }}
+            - name: NGINX_HOST
+              value: {{ .Values.FrontEndHost }}
+{{- end }}
+          image: "{{ .Values.ConsoleAuthenticationServiceImage.name }}:{{ .Values.ConsoleAuthenticationServiceImage.tag }}"
+          imagePullPolicy: "{{ .Values.ConsoleAuthenticationServiceImage.pullPolicy }}"
+          name: console-authentication-service
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8092
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8092
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          ports:
+            - containerPort: 8092
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.AuthenticationServiceResources | nindent 12 }}
+{{- if .Values.UseCustomTrustStore }}
+          volumeMounts:
+            - name: authcacrt
+              mountPath: /cast/certs/ca.crt
+              subPath: ca.crt 
+      volumes:
+        - name: authcacrt
+          configMap:
+            name: authcacrt
+            defaultMode: 0755
+        - name: db-creds
+          secret:
+            secretName: imaging-pwd-sec            
+{{- end }}
+      restartPolicy: Always
+{{- if .Values.UseImagePullSecrets }}      
+      imagePullSecrets:
+        - name: imagepull-sec
+{{- end }}        
