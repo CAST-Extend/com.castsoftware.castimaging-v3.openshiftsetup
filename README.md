@@ -1,0 +1,1 @@
+# com.castsoftware.castimaging-v3.openshiftsetup
