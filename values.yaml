@@ -35,8 +35,16 @@ ContextUrl:
   enable: false
   appcontext: /mycontext   # Should start with "/"  Eg. "/cast"
 #
-# OPTIONAL - Use custom Trust Store
-UseCustomTrustStore: false  
+# OPTIONAL - Use custom Trust Store in console-authentication-service to store certificate
+# Use when certificate cannot be verified (e.g., self-signed certificate or internal CA): it will need to be stored in CAST auth-service
+UseCustomTrustStore: false
+auth:
+  caCertificate: |
+    -----BEGIN CERTIFICATE-----
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    -----END CERTIFICATE----- 
 #
 # OPTIONAL - Access Private Repo with Secret
 UseImagePullSecrets: false
