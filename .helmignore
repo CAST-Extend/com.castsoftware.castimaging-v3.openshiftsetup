@@ -9,5 +9,4 @@ ex_*
 kub-*
 .git
 *-priv.*
-cert-priv/
 imaging_backup*/
