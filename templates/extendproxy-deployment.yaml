@@ -48,6 +48,7 @@ spec:
           - /bin/sh
           - -c
           - |         
+            rm -rf /extend-volume/*
             cp -r /opt/* /extend-volume/ || true
           volumeMounts:
             - mountPath: /extend-volume
@@ -73,10 +74,10 @@ spec:
           resources:
             {{- toYaml .Values.ExtendProxyResources | nindent 12 }}
           volumeMounts:
-            - name: extendproxy
-              mountPath: /opt/cast_extend_proxy
             - name: extend-opt
               mountPath: /opt
+            - name: extendproxy
+              mountPath: /opt/cast_extend_proxy
       restartPolicy: Always
   {{- if .Values.UseImagePullSecrets }}       
       imagePullSecrets:

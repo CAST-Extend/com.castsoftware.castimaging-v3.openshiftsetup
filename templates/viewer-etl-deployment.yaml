@@ -73,6 +73,7 @@ spec:
           - /bin/sh
           - -c
           - |
+            rm -rf /etl-volume/*
             cp -r /opt/imaging/imaging-etl/* /etl-volume/ || true
           volumeMounts:    
             - name: imaging-etl-dir
@@ -97,10 +98,10 @@ spec:
           resources:
             {{- toYaml .Values.ViewerEtlResources | nindent 12 }}
           volumeMounts:
-            - name: logdir
-              mountPath: /opt/imaging/imaging-etl/logs
             - name: imaging-etl-dir
               mountPath: /opt/imaging/imaging-etl
+            - name: logdir
+              mountPath: /opt/imaging/imaging-etl/logs
             - name: etlappconfig
               mountPath: /opt/imaging/imaging-etl/config/app.config
               subPath: app.config
@@ -122,7 +123,7 @@ spec:
         - name: etlappconfig
           configMap:
             name: etlappconfig
-            defaultMode: 0644
+            defaultMode: 0777
 {{- if .Values.EnablePostgresSSL }}
         - name: ssl-certs
           secret:

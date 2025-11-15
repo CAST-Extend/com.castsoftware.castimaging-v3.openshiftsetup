@@ -34,20 +34,7 @@ spec:
     metadata:
       labels:
         app: mcp-server
-    spec:
-      initContainers:
-        - name: init-folders
-          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
-          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
-          command:
-          - /bin/sh
-          - -c
-          - |
-            # check_volume_folder 1000 1000 /app/logs
-          volumeMounts:
-            - name: logdir
-              mountPath: /app/logs
-              readOnly: false                          
+    spec:                         
       containers:
         - env:
   {{- if .Values.ContextUrl.enable }}
@@ -63,7 +50,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /mcp/healthcheck
-              port: 8283
+              port: 8282
               scheme: HTTP
             initialDelaySeconds: 60
             periodSeconds: 10
@@ -73,7 +60,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /mcp/healthcheck
-              port: 8283
+              port: 8282
               scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 10

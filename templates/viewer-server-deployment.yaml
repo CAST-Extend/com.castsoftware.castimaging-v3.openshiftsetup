@@ -68,7 +68,7 @@ spec:
 {{- if or (eq .Values.version "3.3.0") (eq .Values.version "3.3.1") }}
             /home/imaging/3.3.0/Neo4jdatamigrate --log /home/imaging/logs/3.3.0-Neo4jdatamigrate.log --database neo4j --all --migrate --host viewer-neo4j
 {{- end }}
-{{- if or (eq .Values.version "3.4.0") (eq .Values.version "3.4.1") (eq .Values.version "3.4.2") (eq .Values.version "3.4.3") (eq .Values.version "3.4.4") }}
+{{- if or (eq .Values.version "3.4.0") (eq .Values.version "3.4.1") (eq .Values.version "3.4.2") (eq .Values.version "3.4.3") (eq .Values.version "3.4.4") (eq .Values.version "3.4.5") }}
             /home/imaging/3.4.0/Neo4jdatamigrate --log /home/imaging/logs/3.4.0-Neo4jdatamigrate.log --database neo4j --all --migrate --host viewer-neo4j
 {{- end }}
             cat /home/imaging/logs/*
@@ -83,6 +83,8 @@ spec:
           - /bin/sh
           - -c
           - |
+            rm -rf /server-volume/*
+            rm -rf /nginx-volume/*
             cp -r /opt/imaging/imaging-service/* /server-volume/ || true
             cp -r /etc/nginx/* /nginx-volume/ || true
           volumeMounts:
@@ -112,22 +114,22 @@ spec:
           resources:
             {{- toYaml .Values.ViewerServerServiceResources | nindent 12 }}
           volumeMounts:
-            - name: log
-              mountPath: /opt/imaging/imaging-service/logs
             - name: server-data
               mountPath: /opt/imaging/imaging-service
+            - name: log
+              mountPath: /opt/imaging/imaging-service/logs
             - name: nginx
               mountPath: /etc/nginx
-            - name: nginx-cache
-              mountPath: /var/cache/nginx
             - name: nginx-run
               mountPath: /var/run
-            - name: servernginxconf
-              mountPath: /opt/imaging/config/nginx/conf/nginx.conf
-              subPath: nginx.conf
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
             - name: serverappconfig
               mountPath: /opt/imaging/config/app.config
               subPath: app.config
+            - name: servernginxconf
+              mountPath: /opt/imaging/config/nginx/conf/nginx.conf
+              subPath: nginx.conf
 {{- if .Values.UseImagePullSecrets }}               
       imagePullSecrets:
         - name: imagepull-sec
@@ -141,11 +143,11 @@ spec:
         - name: servernginxconf
           configMap:
             name: servernginxconf
-            defaultMode: 0644
+            defaultMode: 0777
         - name: serverappconfig
           configMap:
             name: serverappconfig
-            defaultMode: 0644
+            defaultMode: 0777
         - name: upgrade-log
           emptyDir: {}
         - name: nginx

@@ -42,9 +42,16 @@ spec:
           image: "{{.Values.ViewerNeo4jImage.name}}:{{.Values.ViewerNeo4jImage.tag}}"
           imagePullPolicy: "{{.Values.ViewerNeo4jImage.pullPolicy}}"
           command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
+            shopt -s extglob
+            rm -rf /neo4j-volume/volume-backup || true
+            mkdir /neo4j-volume/volume-backup
+            mv /neo4j-volume/config/neo4j5_data /neo4j-volume/volume-backup/
+            rm -rf /neo4j-volume/!(volume-backup)
+            mkdir /neo4j-volume/config
+            mv /neo4j-volume/volume-backup/neo4j5_data /neo4j-volume/config/
             cp -r /var/lib/neo4j/* /neo4j-volume/ || true
             mkdir -p /neo4j-volume/config/neo4j5_data
           volumeMounts:
@@ -123,11 +130,11 @@ spec:
         - name: neo4jconf
           configMap:
             name: neo4jconf
-            defaultMode: 0644
+            defaultMode: 0777
         - name: apocconf
           configMap:
             name: neo4japocconf
-            defaultMode: 0644
+            defaultMode: 0777
   volumeClaimTemplates:
     - metadata:
         name: neo4jdata

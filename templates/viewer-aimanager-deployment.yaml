@@ -112,7 +112,7 @@ spec:
         - name: openaiappconfig
           configMap:
             name: openaiappconfig
-            defaultMode: 0644
+            defaultMode: 0777
         - name: db-creds
           secret:
             secretName: imaging-pwd-sec
