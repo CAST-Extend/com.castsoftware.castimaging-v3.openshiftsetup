@@ -48,22 +48,6 @@ spec:
               sleep 2
             done
             echo "viewer-neo4j is up!"
-            OPERATOR_PASSWORD=$(cat /opt/secrets/operator-db-password )
-            ESCAPED_OPERATOR_PASSWORD=$(printf '%s\n' "$OPERATOR_PASSWORD" | sed -e 's/[\/&]/\\&/g')
-            cat /opt/imaging/open_ai-manager/config/app.config | sed "s/dbpassword-placeholder/$ESCAPED_OPERATOR_PASSWORD/g" > /updated-config/app.config
-            echo "app.config updated."
-          volumeMounts:
-            - name: logdir
-              mountPath: /opt/imaging/open_ai-manager/logs
-              readOnly: false
-            - name: openaiappconfig
-              mountPath: /opt/imaging/open_ai-manager/config/app.config
-              subPath: app.config
-            - name: updated-config-volume
-              mountPath: /updated-config              
-            - name: db-creds
-              mountPath: /opt/secrets
-              readOnly: true
         - name: init-folders
           image: "{{.Values.ViewerAiManagerImage.name}}:{{.Values.ViewerAiManagerImage.tag}}"
           imagePullPolicy: "{{.Values.ViewerAiManagerImage.pullPolicy}}"
@@ -71,6 +55,7 @@ spec:
           - /bin/sh
           - -c
           - |
+            rm -rf /open-ai-volume/*
             cp -r /opt/imaging/open_ai-manager/* /open-ai-volume/ || true
           volumeMounts:    
             - name: open-ai-dir
@@ -85,6 +70,25 @@ spec:
           imagePullPolicy: "{{ .Values.ViewerAiManagerImage.pullPolicy }}"
           command: ['sh', '-c', "/opt/imaging/open_ai-manager/config/init.sh"]
           name: viewer-aimanager
+          env:
+            - name: TZ
+              value: "UTC"
+            - name: EUREKA_HOST
+              value: "console-control-panel"
+            - name: EUREKA_PORT
+              value: "8098"
+            - name: SERVICE_HOST
+              value: "viewer-aimanager"
+            - name: AIMANAGER_PORT
+              value: "8082"
+            - name: NEO4J_BOLT_ENDPOINT
+              value: "viewer-neo4j:7687"
+            - name: LOG_LEVEL
+              value: "debug"
+            - name: ETL_PORT
+              value: "9001"
+            - name: NEO4J_PASSWORD
+              value: "imaging"
           ports:
             - containerPort: 8082
               protocol: TCP
@@ -96,9 +100,6 @@ spec:
               readOnly: false
             - name: open-ai-dir
               mountPath: /opt/imaging/open_ai-manager
-            - name: updated-config-volume
-              mountPath: /opt/imaging/open_ai-manager/config/app.config
-              subPath: app.config            
 {{- if .Values.UseImagePullSecrets }}               
       imagePullSecrets:
         - name: imagepull-sec
@@ -109,10 +110,6 @@ spec:
             claimName: pvc-imagingviewer-v3-aimanager-logs
         - name: updated-config-volume
           emptyDir: {}            
-        - name: openaiappconfig
-          configMap:
-            name: openaiappconfig
-            defaultMode: 0777
         - name: db-creds
           secret:
             secretName: imaging-pwd-sec
