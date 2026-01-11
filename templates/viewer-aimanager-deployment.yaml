@@ -4,6 +4,7 @@ metadata:
   name: viewer-aimanager
   labels:
     app: viewer-aimanager
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
   - name: http
@@ -95,11 +96,11 @@ spec:
           resources:
             {{- toYaml .Values.ViewerAiManagerResources | nindent 12 }}
           volumeMounts:
+            - name: open-ai-dir
+              mountPath: /opt/imaging/open_ai-manager
             - name: logdir
               mountPath: /opt/imaging/open_ai-manager/logs
               readOnly: false
-            - name: open-ai-dir
-              mountPath: /opt/imaging/open_ai-manager
 {{- if .Values.UseImagePullSecrets }}               
       imagePullSecrets:
         - name: imagepull-sec

@@ -13,9 +13,6 @@ spec:
     targetPort: 8282
   selector:
     app: mcp-server
-{{- if .Values.CreateLoadBalancer }}
-  type: LoadBalancer
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,6 +34,8 @@ spec:
     spec:                         
       containers:
         - env:
+            - name: MCP_SERVER_PORT
+              value: "8282"
   {{- if .Values.ContextUrl.enable }}
             - name: APP_CONTEXT
               value: {{ .Values.ContextUrl.appcontext }}
