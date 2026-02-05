@@ -25,7 +25,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep  
   labels:
-    console.service: console-analysis-node
+    app: castimaging
+    imaging.service: console-analysis-node
 spec:
   accessModes:
 {{- if .Values.AnalysisNodeFS.enable }}
@@ -39,6 +40,7 @@ spec:
     requests:
       storage: {{ .Values.size_shared_datadir }}
 ---
+{{- if .Values.CastStorageService.enable }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -46,6 +48,9 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     helm.sh/resource-policy: keep
+  labels:
+    app: castimaging
+    imaging.service: console-postgres
 spec:
   accessModes:
     - ReadWriteOnce
@@ -53,6 +58,7 @@ spec:
     requests:
       storage: {{ .Values.size_db_data }}
   storageClassName: {{ .Values.DiskClassName }}
+{{- end }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -62,7 +68,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep  
   labels:
-    console.service: viewer-server
+    app: castimaging
+    imaging.service: viewer-server
 spec:
   accessModes:
     - ReadWriteOnce
@@ -79,7 +86,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
   labels:
-    console.service: viewer-etl
+    app: castimaging
+    imaging.service: viewer-etl
 spec:
   accessModes:
     - ReadWriteOnce
@@ -96,7 +104,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
   labels:
-    app: viewer-etl
+    app: castimaging
+    imaging.service: viewer-etl
 spec:
   accessModes:
     - ReadWriteOnce
@@ -113,7 +122,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
   labels:
-    console.service: viewer-aimanager
+    app: castimaging
+    imaging.service: viewer-aimanager
 spec:
   accessModes:
     - ReadWriteOnce
@@ -122,6 +132,7 @@ spec:
     requests:
       storage: {{ .Values.size_imagingviewer_v3_aimanager_logs }}
 ---
+{{- if .Values.McpServer.enable }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -130,7 +141,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
   labels:
-    console.service: mcp-server
+    app: castimaging
+    imaging.service: mcp-server
 spec:
   accessModes:
     - ReadWriteOnce
@@ -138,6 +150,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.size_mcpserver_logs }}
+{{- end }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -147,7 +160,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
   labels:
-    console.service: viewer-api
+    app: castimaging
+    imaging.service: viewer-api
 spec:
   accessModes:
     - ReadWriteOnce
@@ -156,6 +170,7 @@ spec:
     requests:
       storage: {{ .Values.size_imagingviewer_v3_api_logs }}
 ---
+{{- if .Values.ExtendProxy.enable }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -164,7 +179,8 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep 
   labels:
-    console.service: extendproxy 
+    app: castimaging
+    imaging.service: extendproxy 
 spec:
   accessModes:
     - ReadWriteOnce
@@ -172,3 +188,4 @@ spec:
     requests:
       storage: {{ .Values.size_extendproxy_data }}
   storageClassName: {{ .Values.DiskClassName }}
+{{- end }}

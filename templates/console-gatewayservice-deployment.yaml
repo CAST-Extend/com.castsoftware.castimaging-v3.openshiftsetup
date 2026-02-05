@@ -2,9 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
+{{- if .Values.CreateLoadBalancer }}
     helm.sh/resource-policy: keep
+{{- end }}
   labels:
-    console.service: console-gateway-service
+    app: castimaging
+    imaging.group: console
+    imaging.service: console-gateway-service
   name: console-gateway-service
   namespace: {{ .Release.Namespace }}  
 spec:
@@ -22,7 +26,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    console.service: console-gateway-service
+    app: castimaging
+    imaging.group: console
+    imaging.service: console-gateway-service
     version: {{ .Values.ConsoleGatewayServiceImage.tag| default .Values.version }}
   name: console-gateway-service
   namespace: {{ .Release.Namespace }}
@@ -30,14 +36,37 @@ spec:
   replicas: {{ .Values.GatewayServiceReplicaCount }}
   selector:
     matchLabels:
-      console.service: console-gateway-service
+      imaging.service: console-gateway-service
   strategy: {}
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
       labels:
         console.network/aip-network: "true"
+        app: castimaging
+        imaging.group: console
+        imaging.service: console-gateway-service
         console.service: console-gateway-service
     spec:
+{{- if .Values.EnforceNodeAffinity }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.nodeSelectorAppcastimaging | nindent 12 }}
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.labelSelectorServiceSso | nindent 12 }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupConsole | nindent 12 }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.labelSelectorGroupViewer | nindent 12 }}
+{{- end }}
       initContainers:
       - name: console-control-panel-healthcheck
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}

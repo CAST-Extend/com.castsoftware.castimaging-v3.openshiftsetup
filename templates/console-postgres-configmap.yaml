@@ -93,19 +93,108 @@ apiVersion: v1
 data:
   init-db.sh: |
     #!/bin/bash
- 
+
     set -e
+
+    OPERATOR_PASSWORD=$(cat /opt/secrets/operator-db-password )
+    GUEST_PASSWORD=$(cat /opt/secrets/guest-db-password)
+    KEYCLOAK_PASSWORD=$(cat /opt/secrets/keycloak-db-password)     
+    PGPASSWORD=$(cat /opt/secrets/postgres-db-password )
+    env|sort
+    set|sort
+    echo $PGPASSWORD $KEYCLOAK_PASSWORD $GUEST_PASSWORD $OPERATOR_PASSWORD
+    echo "Waiting for PostgreSQL to be ready..."
+    until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
+      echo "PostgreSQL is not ready yet, waiting..."
+      sleep 1
+    done
     
-    # Run initialization commands
-    psql -v ON_ERROR_STOP=1 --username "${POSTGRESQL_USER}" --dbname "${POSTGRESQL_DATABASE}" <<-EOSQL
-        CREATE USER IF NOT EXISTS operator WITH SUPERUSER PASSWORD 'CastAIP';
-        CREATE USER IF NOT EXISTS guest WITH PASSWORD 'WelcomeToAIP';
-        GRANT ALL PRIVILEGES ON DATABASE ${POSTGRESQL_DATABASE} TO operator;
-        CREATE USER IF NOT EXISTS keycloak WITH PASSWORD 'keycloak';
-        CREATE DATABASE keycloak;
-        GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+    echo "PostgreSQL is ready, running initialization..."
+    psql -v ON_ERROR_STOP=1 -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE <<-EOSQL
+      -- Create users only if they don't exist
+      DO \$\$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'operator') THEN
+          CREATE USER operator WITH SUPERUSER PASSWORD '$OPERATOR_PASSWORD';
+        END IF;
+        
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'guest') THEN
+          CREATE USER guest WITH PASSWORD '$GUEST_PASSWORD';
+        END IF;
+        
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
+          CREATE USER keycloak WITH PASSWORD '$KEYCLOAK_PASSWORD';
+        END IF;
+      END
+      \$\$;
+
+      -- Grant privileges (idempotent operation)
+      GRANT ALL PRIVILEGES ON DATABASE postgres TO operator;
+
+      -- Create database only if it doesn't exist
+      SELECT 'CREATE DATABASE keycloak'
+      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+
+      -- Grant privileges on keycloak database
+      GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
     EOSQL
+    echo "Database initialization completed successfully!"
+
 kind: ConfigMap
 metadata:
   name: console-v3-init-db   
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+data:
+  init-db-custom-pg.sh: |
+    #!/bin/bash
+    set -e
+
+    OPERATOR_PASSWORD=$(cat /opt/secrets/operator-db-password )
+    GUEST_PASSWORD=$(cat /opt/secrets/guest-db-password)
+    KEYCLOAK_PASSWORD=$(cat /opt/secrets/keycloak-db-password)     
+    PGPASSWORD=$(cat /opt/secrets/postgres-db-password )
+
+    echo "Waiting for PostgreSQL to be ready..."
+    until pg_isready -h $PGHOST -p $PGPORT -U $POSTGRES_USER; do
+      echo "PostgreSQL is not ready yet, waiting..."
+      sleep 1
+    done
+    echo "PostgreSQL is ready, running initialization..."
+    psql -v ON_ERROR_STOP=1 -h $PGHOST -p $PGPORT -U $POSTGRES_USER -d $POSTGRES_DB <<-EOSQL
+      -- Create users only if they don't exist
+      DO \$\$
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'operator') THEN
+          CREATE USER operator WITH PASSWORD '$OPERATOR_PASSWORD';
+        END IF;
+        
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'guest') THEN
+          CREATE USER guest WITH PASSWORD '$GUEST_PASSWORD';
+        END IF;
+        
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
+          CREATE USER keycloak WITH PASSWORD '$KEYCLOAK_PASSWORD';
+        END IF;
+      END
+      \$\$;
+
+      -- Create databases
+      SELECT 'CREATE DATABASE postgres'
+      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$POSTGRES_DB')\gexec
+
+      SELECT 'CREATE DATABASE keycloak'
+      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
+
+      -- Grant privileges
+      ALTER USER operator WITH SUPERUSER;
+      GRANT ALL PRIVILEGES ON DATABASE postgres TO operator;
+      GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+    EOSQL
+    echo "Exiting database initialization script."
+
+kind: ConfigMap
+metadata:
+  name: init-db-custom-pg   
   namespace: {{ .Release.Namespace }}
