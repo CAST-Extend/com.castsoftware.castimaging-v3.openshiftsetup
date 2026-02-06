@@ -158,6 +158,8 @@ spec:
               value: {{ .Values.FrontEndHost }}{{ .Values.ContextUrl.appcontext }}
             - name: APP_CONTEXT
               value: {{ .Values.ContextUrl.appcontext }}
+            - name: SERVER_FORWARD_HEADERS_STRATEGY
+              value: "framework"
 {{- else }}
             - name: NGINX_HOST
               value: {{ .Values.FrontEndHost }}

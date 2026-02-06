@@ -4,22 +4,33 @@ apiVersion: route.openshift.io/v1
 metadata:
   name: castimaging-route
   namespace: {{ .Release.Namespace }}
+  {{- if .Values.ContextUrl.enable }}
+  annotations:
+    # Rewrite path: /context/something -> /something
+    haproxy.router.openshift.io/rewrite-target: /
+    # Set X-Forwarded-Prefix so Spring Boot knows the context path
+    haproxy.router.openshift.io/set-header: "X-Forwarded-Prefix {{ .Values.ContextUrl.appcontext }}"
+  {{- end }}
 spec:
   host: {{ (urlParse .Values.FrontEndHost).host }}
+  {{- if .Values.ContextUrl.enable }}
+  path: {{ .Values.ContextUrl.appcontext }}
+  {{- else }}
   path: /
+  {{- end }}
   to:
     kind: Service
     name: console-gateway-service
     weight: 100
   port:
     targetPort: '8090'
-    {{- if .Values.Routes.tls }}
+  {{- if .Values.Routes.tls }}
   tls:
     termination: edge
     certificate: {{ .Values.tls.certificate | quote }}
     key: {{ .Values.tls.key | quote }}
     insecureEdgeTerminationPolicy: None
-    {{- end }}
+  {{- end }}
   wildcardPolicy: None
 ---
   {{- if .Values.ExtendProxy.enable }}
