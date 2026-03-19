@@ -152,7 +152,7 @@ spec:
             {{- toYaml .Values.ViewerNeo4jResources | nindent 12 }}
           volumeMounts:
             - name: neo4jdata
-              mountPath: /logs
+              mountPath: /var/lib/neo4j/logs
               subPathExpr: logs
             - name: neo4jdata
               mountPath: /var/lib/neo4j
