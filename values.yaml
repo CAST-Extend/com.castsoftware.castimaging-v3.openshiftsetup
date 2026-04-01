@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-version: 3.5.7
+version: 3.5.8
 
 ####################################################################################
 #
@@ -56,7 +56,11 @@ AnalysisNodeFS:
   enable: false  # Do not change if castimaging is already deployed
 #
 # Maximum number of parallel analysis jobs per analysis node
+#
 MaxParallelAnalysisPerNode: 2
+#
+# Enable/Disable application pre-upgrade backup
+ConsoleEnableBackup: true
 #
 # CAST Storage Class names
 CreateStorageClass: false
@@ -94,7 +98,7 @@ OperatorDbPassword: Q2FzdEFJUA==
 Neo4jPassword: aW1hZ2luZw==
 #
 # CAST Operator password also has to be encrypted using cast-imaging-encryption-tool.jar GUI tool
-#   available in Linux installer https://extend.castsoftware.com/timeline#/extension?id=com.castsoftware.imaging.all.docker&version=3.5.7-funcrel
+#   available in Linux installer https://extend.castsoftware.com/timeline#/extension?id=com.castsoftware.imaging.all.docker&version=3.5.8-funcrel
 OperatorDbPasswordCrypted2: CRYPTED2:90B1A6EC1618661401B724DB5AC34595
 #
 # Keycloak admin password:
@@ -120,6 +124,13 @@ SMTP:
   SPRING_MAIL_PROTOCOL: smtp
   SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
   SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
+#
+# Multi-tenant configuration
+IMAGING_DOMAIN_SYNCHRO_ENABLED: false
+#
+# Dashboard deployment
+DASHBOARD_STANDALONE_ENABLED: false
+#
 ####################################################################################
 
 #
@@ -165,7 +176,7 @@ McpServerReplicaCount: 1
 #
 InitUtilImage:
   name: castimaging/init-util
-  tag: "1.2.8"
+  tag: "1.2.9"
   pullPolicy: IfNotPresent  
 ConsolePostgresImage:
   name: registry.redhat.io/rhel8/postgresql-15
@@ -173,31 +184,31 @@ ConsolePostgresImage:
   pullPolicy: IfNotPresent
 ConsoleSSOServiceImage:
   name: castimaging/sso-service
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ConsoleServiceImage:
   name: castimaging/console
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ConsoleGatewayServiceImage:
   name: castimaging/gateway
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent  
 ConsoleAnalysisNodeImage:
   name: castimaging/analysis-node
-  tag: "3.5.7_core8.4.10"
+  tag: "3.5.8_core8.4.10"
   pullPolicy: IfNotPresent
 ConsoleControlPaneImage:
   name: castimaging/admin-center
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ConsoleAuthenticationServiceImage:
   name: castimaging/auth-service
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ConsoleIntegratedDashboardsImage:
   name: castimaging/dashboards-v3
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
   
 #
@@ -205,23 +216,23 @@ ConsoleIntegratedDashboardsImage:
 #
 ViewerNeo4jImage:
   name: castimaging/neo4j
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ViewerServiceImage:
   name: castimaging/viewer
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ViewerEtlImage:
   name: castimaging/etl-service
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent  
 ViewerAiManagerImage:
   name: castimaging/ai-service
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 ViewerApiImage:
   name: castimaging/imaging-apis
-  tag: "3.5.7"
+  tag: "3.5.8"
   pullPolicy: IfNotPresent
 McpServerImage:
   name: castimaging/imaging-mcp-server

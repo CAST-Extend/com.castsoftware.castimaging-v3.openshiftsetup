@@ -164,9 +164,9 @@ spec:
               value: /etc/ssl/certs-postgres/sslconfig.ini
 {{- end }}
             - name: DASHBOARD_STANDALONE_ENABLED
-              value: "false"
+              value: "{{ .Values.DASHBOARD_STANDALONE_ENABLED }}"
             - name: IMAGING_DOMAIN_SYNCHRO_ENABLED
-              value: "false"
+              value: "{{ .Values.IMAGING_DOMAIN_SYNCHRO_ENABLED }}"
 {{- if .Values.SMTP.enable }}
             - name: SPRING_MAIL_HOST
               value: "{{ .Values.SMTP.SPRING_MAIL_HOST }}"

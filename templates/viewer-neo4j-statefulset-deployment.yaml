@@ -18,9 +18,11 @@ spec:
     - port: 7473
       targetPort: 7473
       name: https
+    - port: 8888
+      targetPort: 8888
+      name: upgrade
   selector:
     imaging.service: viewer-neo4j
-    component: core
 ---
 apiVersion: "apps/v1"
 kind: StatefulSet
@@ -45,7 +47,6 @@ spec:
         app: castimaging
         imaging.group: viewer
         imaging.service: viewer-neo4j
-        component: core
     spec:  
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
@@ -83,7 +84,7 @@ spec:
             mkdir -p /neo4j-volume/config/neo4j5_data
           volumeMounts:
             - name: neo4jdata
-              mountPath: /logs
+              mountPath: /var/lib/neo4j/logs
               subPathExpr: logs
             - name: neo4jdata
               mountPath: /neo4j-volume
@@ -148,6 +149,8 @@ spec:
               name: bolt
             - containerPort: 7473
               name: https
+            - containerPort: 8888
+              name: upgrade
           resources:
             {{- toYaml .Values.ViewerNeo4jResources | nindent 12 }}
           volumeMounts:
