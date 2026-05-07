@@ -29,13 +29,8 @@ metadata:
     imaging.service: console-analysis-node
 spec:
   accessModes:
-{{- if .Values.AnalysisNodeFS.enable }}
     - ReadWriteMany
   storageClassName: {{ .Values.FileClassName }}
-{{- else }}
-    - ReadWriteOnce
-  storageClassName: {{ .Values.DiskClassName }}
-{{- end }}  
   resources:
     requests:
       storage: {{ .Values.size_shared_datadir }}
@@ -189,3 +184,21 @@ spec:
       storage: {{ .Values.size_extendproxy_data }}
   storageClassName: {{ .Values.DiskClassName }}
 {{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-controlpanel-audit-trails
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    app: castimaging
+    imaging.service: console-control-panel
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_controlpanel_audit_trails }}

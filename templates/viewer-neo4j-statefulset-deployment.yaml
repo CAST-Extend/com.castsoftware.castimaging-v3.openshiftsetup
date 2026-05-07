@@ -47,7 +47,7 @@ spec:
         app: castimaging
         imaging.group: viewer
         imaging.service: viewer-neo4j
-    spec:  
+    spec:
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -64,6 +64,14 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorServicePostgresAnalysisNode | nindent 12 }}
             {{- toYaml .Values.labelSelectorGroupConsole | nindent 12 }}
+{{- end }}
+{{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.labelSelectorServiceAnalysisNode | nindent 12 }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupConsole | nindent 12 }}
 {{- end }}
       initContainers:      
         - name: init-folders
@@ -122,12 +130,20 @@ spec:
             - name: APP_CONTEXT
               value: {{ .Values.ContextUrl.appcontext }}
 {{- end }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: 7474
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /
               port: 7474
               scheme: HTTP
-            initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 30
@@ -137,7 +153,6 @@ spec:
               path: /
               port: 7474
               scheme: HTTP
-            initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 30
@@ -156,13 +171,13 @@ spec:
           volumeMounts:
             - name: neo4jdata
               mountPath: /var/lib/neo4j/logs
-              subPathExpr: logs
+              subPath: logs
             - name: neo4jdata
               mountPath: /var/lib/neo4j
-              subPathExpr: neo4jdata
+              subPath: neo4jdata
             - name: neo4jdata
               mountPath: /var/lib/neo4j/config/csv/archive
-              subPathExpr: csvarchive  
+              subPath: csvarchive
 {{- if .Values.UseImagePullSecrets }}              
       imagePullSecrets:
         - name: imagepull-sec

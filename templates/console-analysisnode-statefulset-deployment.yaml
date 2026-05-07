@@ -34,6 +34,7 @@ spec:
       annotations:
         sidecar.istio.io/inject: "false"
       labels:
+        console.network/aip-network: "true"
         app: castimaging
         imaging.service: console-analysis-node
     spec:
@@ -50,6 +51,18 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorAppcastimaging | nindent 12 }}
 {{- end }}
+{{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.labelSelectorServiceAnalysisNodeNeo4j | nindent 12 }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
+{{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:     
         - name: init-folders-services-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -58,8 +71,6 @@ spec:
           - /bin/sh
           - -c
           - |
-            mkdir -p {{ .Values.anadir.datadirmount }}
-            mkdir -p {{ .Values.anadir.castdirmount }}
             mkdir -p {{ .Values.anadir.common }}
             mkdir -p {{ .Values.anadir.delivery }}
             mkdir -p {{ .Values.anadir.deploy }}
@@ -82,6 +93,11 @@ spec:
             done            
             echo "console-authentication-service is healthy!"
             echo "Done."
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - mountPath: {{ .Values.anadir.castdirmount }}
               name: castdir
@@ -102,21 +118,36 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: imaging-pwd-sec
+                  key: postgres-db-password  
+            - name: OPERATOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
                   key: operator-db-password
           command:
           - /bin/sh
           - -c
           - |
-            echo "Running postgres upgrade..."
+            # Define connection variables
 {{- if .Values.CustomPostgres.enable }}
-            psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d postgres -f /home/imaging/sql/analysisnode-upgrade-script.sql
+            PG_HOST="{{ .Values.CustomPostgres.host }}"
+            PG_PORT="{{ .Values.CustomPostgres.port }}"
 {{- else }}
-            psql -h console-postgres -p 2285 -U operator -d postgres -f /home/imaging/sql/analysisnode-upgrade-script.sql
-{{- end }}  
+            PG_HOST="console-postgres"
+            PG_PORT="2285"
+{{- end }}
+            echo "Running postgres upgrade..."
+            PGPASSWORD="$OPERATOR_PASSWORD"
+            psql -h "$PG_HOST" -p "$PG_PORT" -U operator -d postgres -f /home/imaging/sql/analysisnode-upgrade-script.sql
           volumeMounts:
             - name: analysisnode-upgrade-script
               mountPath: /home/imaging/sql/analysisnode-upgrade-script.sql
               subPath: analysisnode-upgrade-script.sql       
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
       containers:
         - env:
             - name: TMPDIR
@@ -144,12 +175,20 @@ spec:
           image: "{{ .Values.ConsoleAnalysisNodeImage.name }}:{{ .Values.ConsoleAnalysisNodeImage.tag}}"
           imagePullPolicy: "{{ .Values.ConsoleAnalysisNodeImage.pullPolicy }}"
           name: console-analysis-node
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8089
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8089
               scheme: HTTP
-            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 20
@@ -159,7 +198,6 @@ spec:
               path: /actuator/health
               port: 8089
               scheme: HTTP
-            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 20
@@ -181,6 +219,11 @@ spec:
               mountPath: /etc/ssl/certs-postgres
               readOnly: true
 {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
       restartPolicy: Always 
 {{- if .Values.UseImagePullSecrets }}      
       imagePullSecrets:

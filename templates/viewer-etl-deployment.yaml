@@ -57,6 +57,12 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorGroupConsole | nindent 12 }}
 {{- end }}
+{{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupConsole | nindent 12 }}
+{{- end }}
       initContainers:
         - name: neo4j-and-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -75,7 +81,7 @@ spec:
               sleep 2
             done
             echo "console-control-panel is healthy!"  
-            until curl -s --fail --max-time 5 http://viewer-neo4j:7474 > /dev/null 2>&1; do 
+            until curl -s --fail --max-time 5 http://viewer-neo4j:7474 > /dev/null 2>&1; do
               echo "Waiting for neo4j..."
               sleep 2
             done
@@ -131,7 +137,7 @@ spec:
             - name: ETL_PORT
               value: "9001"
             - name: NEO4J_BOLT_ENDPOINT
-              value: "viewer-neo4j:7687"
+              value: "bolt://viewer-neo4j:7687"
             - name: LOG_LEVEL
               value: "debug"
             - name: WORKER_POOL_SIZE
@@ -139,7 +145,14 @@ spec:
             - name: NEO4J_IMPORT_BATCH_SIZE
               value: "1000"
             - name: NEO4J_PASSWORD
-              value: "imaging"
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: neo4j-password
+{{- if .Values.ContextUrl.enable }}
+            - name: APP_CONTEXT
+              value: {{ .Values.ContextUrl.appcontext }}
+{{- end }}
           ports:
             - containerPort: 9001
               protocol: TCP
@@ -150,6 +163,7 @@ spec:
               mountPath: /opt/imaging/imaging-etl
             - name: logdir
               mountPath: /opt/imaging/imaging-etl/logs
+              readOnly: false
             - name: csvarchive
               mountPath: /opt/imaging/imaging-etl/upload/archive
 {{- if .Values.EnablePostgresSSL }}

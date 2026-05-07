@@ -69,7 +69,13 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorGroupViewer | nindent 12 }}
   {{- end }}
-      initContainers:      
+  {{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
+  {{- end }}
+      initContainers:
         - name: init-folders
           image: {{ .Values.ExtendProxyImage.name }}:{{ .Values.ExtendProxyImage.tag }}
           imagePullPolicy: "{{ .Values.ExtendProxyImage.pullPolicy }}"

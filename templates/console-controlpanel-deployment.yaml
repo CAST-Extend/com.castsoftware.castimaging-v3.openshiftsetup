@@ -62,6 +62,12 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorGroupViewer | nindent 12 }}
 {{- end }}
+{{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
+{{- end }}
       initContainers:
       - name: wait-for-postgres
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -75,7 +81,7 @@ spec:
 {{- else }}
           until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
 {{- end }}
-      - name: postgres-scripts
+      - name: postgres-scripts-ssl-setup
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
         imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
         env:
@@ -126,6 +132,8 @@ spec:
             - name: HOST_CONTROL_PANEL
               value: console-control-panel
             - name: PORT_CONTROL_PANEL
+              value: "8098"
+            - name: PORT_EUREKA
               value: "8098"
 {{- if .Values.CustomPostgres.enable }}
             - name: DB_HOST
@@ -189,12 +197,20 @@ spec:
           image: "{{ .Values.ConsoleControlPaneImage.name }}:{{ .Values.ConsoleControlPaneImage.tag}}"
           imagePullPolicy: "{{ .Values.ConsoleControlPaneImage.pullPolicy }}"
           name: console-control-panel
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8098
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8098
               scheme: HTTP
-            initialDelaySeconds: 120
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 20
@@ -204,7 +220,6 @@ spec:
               path: /actuator/health
               port: 8098
               scheme: HTTP
-            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 20
@@ -216,6 +231,9 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.ControlPanelResources | nindent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.anadir.common }}
+              name: audit-trails
 {{- if .Values.EnablePostgresSSL }}
           volumeMounts:
             - name: postgres-ssl-files
@@ -224,6 +242,9 @@ spec:
 {{- end }}
       restartPolicy: Always
       volumes:
+        - name: audit-trails
+          persistentVolumeClaim:
+            claimName: pvc-controlpanel-audit-trails
         - name: contexturl-controlpanel-update-script
           configMap:
             name: contexturl-controlpanel-update-script
@@ -243,4 +264,4 @@ spec:
 {{- if .Values.UseImagePullSecrets }}       
       imagePullSecrets:
         - name: imagepull-sec  
-{{- end }}        
+{{- end }}

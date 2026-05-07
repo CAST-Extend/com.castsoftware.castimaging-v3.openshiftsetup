@@ -22,7 +22,7 @@ metadata:
     app: castimaging
     imaging.group: console
     imaging.service: console-sso-service
-    version: {{ .Values.ConsoleSSOServiceImage.tag| default .Values.version }}
+    version: {{ .Values.ConsoleSSOServiceImage.tag | default .Values.version }}
   name: console-sso-service
   namespace: {{ .Release.Namespace }}
 spec:
@@ -58,18 +58,24 @@ spec:
             {{- toYaml .Values.labelSelectorServicePostgresAnalysisNode | nindent 12 }}
             {{- toYaml .Values.labelSelectorGroupViewer | nindent 12 }}
 {{- end }}
+{{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
+{{- end }}
       initContainers:
-      - name: wait-for-postgres
-        image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
-        imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
-        command:
-        - /bin/sh
-        - -c
-        - |
+        - name: wait-for-postgres
+          image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+          imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
 {{- if .Values.CustomPostgres.enable }}
-          until pg_isready -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }}; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+            until pg_isready -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }}; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
 {{- else }}
-          until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
+            until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
 {{- end }}
       containers:
         - env:       
@@ -122,6 +128,33 @@ spec:
           image: "{{ .Values.ConsoleSSOServiceImage.name }}:{{ .Values.ConsoleSSOServiceImage.tag}}"
           imagePullPolicy: "{{ .Values.ConsoleSSOServiceImage.pullPolicy }}"
           name: console-sso-service
+          startupProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: 9000
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: 9000
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 20
+            successThreshold: 1
           ports:
             - containerPort: 8080
               protocol: TCP
@@ -131,4 +164,47 @@ spec:
 {{- if .Values.UseImagePullSecrets }}       
       imagePullSecrets:
         - name: imagepull-sec  
-{{- end }}        
+{{- end }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-init-job
+  namespace: {{ .Release.Namespace }}
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: keycloak-init
+          image: "{{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag}}"
+          env:
+            - name: KC_INTERNAL_URL
+              value: http://console-sso-service:8096/auth
+            - name: KC_USER
+              value: "admin"
+            - name: KC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imaging-pwd-sec
+                  key: keycloak-admin-password
+            - name: KCADMIN_USERNAME
+              value: "{{ .Values.KCADMIN_USERNAME }}"
+            - name: KCADMIN_PASSWORD
+              value: "admin"
+          command: ["sh", "-c", "/init-keycloak.sh"]
+          volumeMounts:
+            - name: keycloak-init-script
+              mountPath: "/init-keycloak.sh"               
+              subPath: init-keycloak.sh
+          resources:
+            {{- toYaml .Values.InitContainerResources | nindent 12 }}
+      volumes:
+        - name: keycloak-init-script
+          configMap:
+            name: keycloak-init-script
+            defaultMode: 0775

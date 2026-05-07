@@ -39,7 +39,7 @@ spec:
         app: castimaging
         imaging.group: viewer
         imaging.service: mcp-server
-    spec: 
+    spec:
   {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -57,7 +57,13 @@ spec:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorGroupConsole | nindent 12 }}
-  {{- end }}                        
+  {{- end }}
+  {{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupConsole | nindent 12 }}
+  {{- end }}
       containers:
         - env:
             - name: MCP_SERVER_PORT
@@ -72,12 +78,20 @@ spec:
           imagePullPolicy: "{{ .Values.McpServerImage.pullPolicy }}"
           command: ['sh', '-c', "/app/init.sh"]
           name: mcp-server
+          startupProbe:
+            httpGet:
+              path: /mcp/healthcheck
+              port: 8282
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /mcp/healthcheck
               port: 8282
               scheme: HTTP
-            initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 20
@@ -87,7 +101,6 @@ spec:
               path: /mcp/healthcheck
               port: 8282
               scheme: HTTP
-            initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 20

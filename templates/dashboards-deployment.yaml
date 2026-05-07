@@ -60,7 +60,13 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorGroupViewer | nindent 12 }}
 {{- end }}
-      initContainers:             
+{{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
+{{- end }}
+      initContainers: 
         - name: console-control-panel-and-authentication-service-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
           imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
@@ -128,6 +134,10 @@ spec:
               value: "8091"
             - name: eureka.instance.instanceId
               value: console-dashboards:8097
+{{- if .Values.DashboardsJavaToolOptions }}
+            - name: JAVA_TOOL_OPTIONS
+              value: "{{ .Values.DashboardsJavaToolOptions }}"
+{{- end }}
 {{- if .Values.EnablePostgresSSL }}
             - name: CASTCONNECTIONEXTRAPARAMETERS
               value: /etc/ssl/certs-postgres/sslconfig.ini
@@ -139,7 +149,7 @@ spec:
             - containerPort: 8097
               protocol: TCP
           resources:
-            {{- toYaml .Values.DashboardsResources | nindent 12 }}
+            {{- toYaml .Values.IntegratedDashboardsResources | nindent 12 }}
           volumeMounts:
             - name: app-resources
               mountPath: /app/resources

@@ -36,7 +36,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.nodeSelectorAppcastimaging | nindent 12 }}
   {{- end }}
-      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      restartPolicy: Never  
       containers:
         - name: postgres-init
           image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag}}"
@@ -62,9 +66,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
       volumes:
         - name: pginit
           configMap:
@@ -156,9 +157,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
           volumeMounts:
             - mountPath: /var/lib/pgsql/data
               name: db-data
@@ -209,6 +207,10 @@ spec:
             {{- toYaml .Values.nodeSelectorAppcastimaging | nindent 12 }}
   {{- end }}
       restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres-init
           image: "{{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag}}"
@@ -229,6 +231,11 @@ spec:
             - name: db-creds
               mountPath: /opt/secrets
               readOnly: true 
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
       volumes:
         - name: init-db-custom-pg
           configMap:
