@@ -80,11 +80,12 @@ CreateStorageClass: false
 DiskClassName: crc-csi-hostpath-provisioner
 FileClassName: crc-csi-hostpath-provisioner
 #
-# Postgres
-CastStorageService: # If enabled, postgres will be deployed in this helm chart
-  enable: true
+# Postgres: choose between CastStorageService (embedded postgres) OR CustomPostgres (connect to existing external server)
+CastStorageService:
+  enable: true      # Embedded postgres will be deployed
+  ssl: false        # SSL enforcement
 CustomPostgres:
-  enable: false     # If enabled, external postgres server will be used, init-db-custom-pg.sh will be executed
+  enable: false     # Existing external server will be used
   host: mypostgreshostname
   adminlogin: postgres     # Store password in PostgresDbPassword variable
   port: 2285

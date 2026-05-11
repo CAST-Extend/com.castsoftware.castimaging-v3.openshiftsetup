@@ -112,10 +112,45 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.labelSelectorAppcastimaging | nindent 12 }}
   {{- end }}
+  {{- if .Values.EnforceBalancedAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
+  {{- end }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+  {{- if .Values.CastStorageService.ssl }}
+      initContainers:
+        - name: generate-ssl-cert
+          image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag }}"
+          imagePullPolicy: "{{ .Values.ConsolePostgresImage.pullPolicy }}"
+          command:
+            - bash
+            - -c
+            - |
+              umask 177
+              openssl genrsa -out /var/lib/postgresql/ssl/server.key 2048
+              umask 133
+              openssl req -new -x509 -days 3650 -nodes \
+                -key /var/lib/postgresql/ssl/server.key \
+                -subj "/CN=console-postgres" \
+                -out /var/lib/postgresql/ssl/server.crt
+          volumeMounts:
+            - name: postgres-ssl
+              mountPath: /var/lib/postgresql/ssl
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            {{- toYaml .Values.InitContainerResources | nindent 12 }}
+  {{- end }}
       containers:
         - env:
             - name: POSTGRESQL_USER
@@ -165,6 +200,15 @@ spec:
               subPath: postgresql.conf.sample
             - name: dshm
               mountPath: /dev/shm
+  {{- if .Values.CastStorageService.ssl }}
+            - name: postgres-ssl
+              mountPath: /var/lib/postgresql/ssl
+              readOnly: true
+            - name: pghbaconf
+              mountPath: /etc/postgresql/pg_hba.conf
+              subPath: pg_hba.conf
+              readOnly: true
+  {{- end }}
       volumes:
         - name: db-data
           persistentVolumeClaim:
@@ -181,6 +225,13 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: {{ .Values.postgres_shmsize }}
+  {{- if .Values.CastStorageService.ssl }}
+        - name: postgres-ssl
+          emptyDir: {}
+        - name: pghbaconf
+          configMap:
+            name: console-v3-pghbaconf
+  {{- end }}
 {{- end }}
 ---
 {{- if .Values.CustomPostgres.enable }}
