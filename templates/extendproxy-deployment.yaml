@@ -93,11 +93,11 @@ spec:
             - name: host_port
               value: "8085"
             - name: host_name
-              value: "{{ (urlParse .Values.ExtendProxy.exthostname_url).host }}"
+              value: "{{ (urlParse .Values.ExtendProxy.exthostname).host }}"
             - name: ext_public_url
               value: "https://extend.castsoftware.com"
             - name: public_url
-              value: "{{ .Values.ExtendProxy.exthostname_url }}"
+              value: "https://{{ .Values.ExtendProxy.exthostname }}"
             - name: platform
               value: "linux_x64"
           image: "{{ .Values.ExtendProxyImage.name }}:{{ .Values.ExtendProxyImage.tag}}"

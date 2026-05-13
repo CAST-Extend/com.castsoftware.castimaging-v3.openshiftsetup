@@ -40,7 +40,7 @@ metadata:
   name: extendproxy-route
   namespace: {{ .Release.Namespace }}
 spec:
-  host: {{ (urlParse .Values.ExtendProxy.exthostname_url).host }}
+  host: {{ .Values.ExtendProxy.exthostname }}
   path: /
   to:
     kind: Service
