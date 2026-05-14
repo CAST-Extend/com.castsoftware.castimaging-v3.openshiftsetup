@@ -5,7 +5,7 @@
 ###############################################################
 NAMESPACE="castimaging-v3"
 # Helm action: install or upgrade
-ACTION="upgrade"
+ACTION="install"
 # Bundle file to be uploaded. Leave empty to skip:
 BUNDLE_FILE_PATH="/tmp/linux-bundle/CastArchive_134230312386136230_linux_x64.extarchive"
 # Provide the path to your custom values file (will override values set in values.yaml):

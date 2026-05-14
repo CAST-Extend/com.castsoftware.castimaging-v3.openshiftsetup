@@ -5,7 +5,7 @@ REM Batch Parameters
 REM ##############################################################
 set NAMESPACE=castimaging-v3
 REM Helm action: install or upgrade
-set ACTION=upgrade
+set ACTION=install
 REM Bundle file to be uploaded. Leave empty to skip:
 set BUNDLE_FILE_PATH=C:\temp\linux-bundle\CastArchive_134230312386136230_linux_x64.extarchive
 REM Provide the path to your custom values file (will override values set in values.yaml):

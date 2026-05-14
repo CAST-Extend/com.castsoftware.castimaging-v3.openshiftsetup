@@ -1,4 +1,5 @@
 {{- if .Values.Routes.enable }}
+# Main application route — sends everything to console-gateway-service
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -32,6 +33,36 @@ spec:
     insecureEdgeTerminationPolicy: None
   {{- end }}
   wildcardPolicy: None
+---
+  {{- if .Values.UseCookieAdapter }}
+# Auth route — sends /auth/... to cookie-adapter-service for cookie rewriting
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: castimaging-auth-route
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: {{ (urlParse .Values.FrontEndHost).host }}
+    {{- if .Values.ContextUrl.enable }}
+  path: {{ .Values.ContextUrl.appcontext }}/auth
+    {{- else }}
+  path: /auth
+    {{- end }}
+  to:
+    kind: Service
+    name: cookie-adapter-service
+    weight: 100
+  port:
+    targetPort: http
+    {{- if .Values.Routes.tls }}
+  tls:
+    termination: edge
+    certificate: {{ .Values.tls.certificate | quote }}
+    key: {{ .Values.tls.key | quote }}
+    insecureEdgeTerminationPolicy: None
+    {{- end }}
+  wildcardPolicy: None
+  {{- end }}
 ---
   {{- if .Values.ExtendProxy.enable }}
 kind: Route
