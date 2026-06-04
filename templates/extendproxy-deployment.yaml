@@ -75,19 +75,6 @@ spec:
           preferredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
   {{- end }}
-      initContainers:
-        - name: init-folders
-          image: {{ .Values.ExtendProxyImage.name }}:{{ .Values.ExtendProxyImage.tag }}
-          imagePullPolicy: "{{ .Values.ExtendProxyImage.pullPolicy }}"
-          command:
-          - /bin/bash
-          - -c
-          - |         
-            rm -rf /extend-volume/*
-            cp -r /opt/* /extend-volume/ || true
-          volumeMounts:
-            - mountPath: /extend-volume
-              name: extend-opt
       containers:
         - env:
             - name: host_port
@@ -109,8 +96,6 @@ spec:
           resources:
             {{- toYaml .Values.ExtendProxyResources | nindent 12 }}
           volumeMounts:
-            - name: extend-opt
-              mountPath: /opt
             - name: extendproxy
               mountPath: /opt/cast_extend_proxy/data
       restartPolicy: Always
@@ -122,6 +107,4 @@ spec:
         - name: extendproxy
           persistentVolumeClaim:
             claimName: pvc-extendproxy-data
-        - name: extend-opt
-          emptyDir: {}
 {{- end }}
