@@ -73,7 +73,7 @@ spec:
             defaultMode: 0775
         - name: db-creds
           secret:
-            secretName: imaging-pwd-sec
+            secretName: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -158,7 +158,7 @@ spec:
             - name: POSTGRESQL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: imaging-pwd-sec
+                  name: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
                   key: postgres-db-password 
             - name: POSTGRESQL_DATABASE
               value: postgres
@@ -294,5 +294,5 @@ spec:
             defaultMode: 0775
         - name: db-creds
           secret:
-            secretName: imaging-pwd-sec
+            secretName: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
 {{- end }}

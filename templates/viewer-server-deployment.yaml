@@ -114,7 +114,7 @@ spec:
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: imaging-pwd-sec
+                  name: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
                   key: neo4j-password
           command:
           - /bin/bash
@@ -148,6 +148,7 @@ spec:
             done
 
             # Run neo4j migration
+            echo "Running migration..."
             /var/lib/neo4j/config/migration/Neo4jdatamigrate --log "$LOG_FILE" --database neo4j --all --migrate --silent --host viewer-neo4j
             echo "Migration completed."
             echo "-------------------------------------------------"
@@ -184,7 +185,7 @@ spec:
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: imaging-pwd-sec
+                  name: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
                   key: neo4j-password
 {{- if .Values.ContextUrl.enable }}
             - name: APP_CONTEXT
@@ -202,14 +203,14 @@ spec:
               mountPath: /opt/imaging/imaging-service
             - name: server-config
               mountPath: /opt/imaging/config
-            - name: log
-              mountPath: /opt/imaging/imaging-service/logs
             - name: nginx
               mountPath: /etc/nginx
             - name: nginx-run
               mountPath: /var/run
             - name: nginx-cache
               mountPath: /var/cache/nginx
+            - name: log
+              mountPath: /opt/imaging/imaging-service/logs
             - name: servernginxconf
               mountPath: /opt/imaging/config/nginx/conf/nginx.conf
               subPath: nginx.conf
