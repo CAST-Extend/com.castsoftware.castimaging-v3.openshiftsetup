@@ -120,6 +120,9 @@ spec:
           - /bin/bash
           - -c
           - |
+{{- if .Values.SKIP_NEO4J_MIGRATION }}
+            echo "Skipping neo4j migration."
+{{- else }}
             TIMESTAMP=$(date +%Y%m%d_%H%M%S)
             LOG_FILE="/tmp/migration_${TIMESTAMP}.log"
 
@@ -156,6 +159,8 @@ spec:
             echo "-------------------------------------------------"
             cat "$LOG_FILE"
             echo "-------------------------------------------------"
+{{- end }}
+            echo "Done."
           resources:
             {{- toYaml .Values.InitContainerResources | nindent 12 }}
       containers:
