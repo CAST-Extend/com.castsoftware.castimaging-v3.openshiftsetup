@@ -103,14 +103,20 @@ spec:
           imagePullPolicy: "{{.Values.ViewerNeo4jImage.pullPolicy}}"
           command: ['sh', '-c', "/var/lib/neo4j/config/init.sh"]
           env:
+{{- $neo4jReserved := list "NEO4J_ACCEPT_LICENSE_AGREEMENT" "NEO4J_USERNAME" "NEO4J_PASSWORD" "NEO4J_BOLT_ENDPOINT" }}
+{{- $neo4jFlat := dict }}
+{{- range $key, $value := .Values }}
+{{- if and (hasPrefix "NEO4J_" $key) (not (has $key $neo4jReserved)) }}
+{{- $_ := set $neo4jFlat $key $value }}
+{{- end }}
+{{- end }}
+{{- $neo4jVars := merge $neo4jFlat (.Values.NEO4J | default dict) }}
+{{- range $key, $value := $neo4jVars }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+{{- end }}
             - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
               value: "yes"
-            - name: NEO4J_server_memory_heap_initial__size
-              value: "{{ .Values.NEO4J_server_memory_heap_initial__size }}"
-            - name: NEO4J_server_memory_heap_max__size
-              value: "{{ .Values.NEO4J_server_memory_heap_max__size }}"
-            - name: NEO4J_dbms_memory_transaction_total_max
-              value: "{{ .Values.NEO4J_dbms_memory_transaction_total_max }}"
             - name: TZ
               value: "UTC"
             - name: NEO4J_USERNAME
@@ -136,27 +142,9 @@ spec:
               port: 7474
               scheme: HTTP
             initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 10
-            failureThreshold: 30
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 7474
-              scheme: HTTP
-            periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 30
-            successThreshold: 1
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 7474
-              scheme: HTTP
-            periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 30
-            successThreshold: 1
+            periodSeconds: 15
+            timeoutSeconds: 30
+            failureThreshold: 60
           ports:
             - containerPort: 7474
               name: browser

@@ -131,13 +131,17 @@ spec:
             - bash
             - -c
             - |
+              set -euo pipefail
+              echo "[generate-ssl-cert] Generating private key..."
               umask 177
               openssl genrsa -out /var/lib/postgresql/ssl/server.key 2048
+              echo "[generate-ssl-cert] Generating self-signed certificate..."
               umask 133
               openssl req -new -x509 -days 3650 -nodes \
                 -key /var/lib/postgresql/ssl/server.key \
                 -subj "/CN=console-postgres" \
                 -out /var/lib/postgresql/ssl/server.crt
+              echo "[generate-ssl-cert] SSL certificate generated successfully"
           volumeMounts:
             - name: postgres-ssl
               mountPath: /var/lib/postgresql/ssl

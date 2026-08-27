@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-version: 3.6.5
+version: 3.6.6
 
 ####################################################################################
 #
@@ -85,11 +85,11 @@ CustomPostgres:
 # Secrets - 2 options:
 # 1) You can provide the name of an existing Kubernetes Secret containing the required passwords:
 existingSecret: ""
-#    If provided, most password variables will be ignored (PostgresDbPassword, OperatorDbPassword, KeycloakDbPassword, Neo4jPassword, KeycloakAdminPassword, SPRING_MAIL_PASSWORD)
-#    with the exception of the OperatorDbPasswordCrypted2 variable which value is always required and used.
+#    If provided, all password variables below will be ignored (PostgresDbPassword, OperatorDbPassword, OperatorDbPasswordCrypted2, KeycloakDbPassword, Neo4jPassword, KeycloakAdminPassword, SPRING_MAIL_PASSWORD)
 #    WARNING: If you use an external secret, it MUST contain the exact following keys:
 #    - postgres-db-password
 #    - operator-db-password
+#    - operator-db-password-crypted2 (base64-encoded value of the "CRYPTED2:..." string, see OperatorDbPasswordCrypted2 below)
 #    - guest-db-password
 #    - keycloak-db-password
 #    - keycloak-admin-password
@@ -130,11 +130,31 @@ KeycloakAdminPassword: YWRtaW4=
 # Keycloak login name for UI login:
 KCADMIN_USERNAME: kcadmin
 
-#
-# Neo4j memory configuration:
-NEO4J_server_memory_heap_initial__size: 12G
-NEO4J_server_memory_heap_max__size: 12G
-NEO4J_dbms_memory_transaction_total_max: 10G
+################################################
+# Extra environment variables in containers
+################################################
+NEO4J:
+  NEO4J_server_memory_heap_initial__size: 12G
+  NEO4J_server_memory_heap_max__size: 12G
+  NEO4J_dbms_memory_transaction_total_max: 10G
+ETL:
+  WORKER_POOL_SIZE: 4
+  NEO4J_IMPORT_BATCH_SIZE: 1000
+  NEO4J_DELETE_BATCH_SIZE: 2000
+SERVER:
+AIMANAGER:
+MCPSERVER:
+CONTROLPANEL:
+  IMAGING_DOMAIN_SYNCHRO_ENABLED: false
+ANALYSISNODE:
+API:
+AUTHENTICATIONSERVICE:
+CONSOLESERVICE:
+DASHBOARDS:
+GATEWAYSERVICE:
+SSOSERVICE:
+EXTENDPROXY:
+################################################
 
 #
 # Maximum number of parallel analysis jobs per analysis node
@@ -160,16 +180,6 @@ SMTP:
   SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: true
   SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: true
 
-#
-# ETL configuration
-ETL:
-  WORKER_POOL_SIZE: 4
-  NEO4J_IMPORT_BATCH_SIZE: 1000
-  NEO4J_DELETE_BATCH_SIZE: 2000
-
-#
-# Multi-tenant configuration
-IMAGING_DOMAIN_SYNCHRO_ENABLED: false
 #
 # Miscellaneous
 DASHBOARD_STANDALONE_ENABLED: false
@@ -233,31 +243,31 @@ ConsolePostgresImage:
   pullPolicy: IfNotPresent
 ConsoleSSOServiceImage:
   name: castimaging/sso-service-ocp
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ConsoleServiceImage:
   name: castimaging/console
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ConsoleGatewayServiceImage:
   name: castimaging/gateway
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent  
 ConsoleAnalysisNodeImage:
   name: castimaging/analysis-node
-  tag: "3.6.5_core8.4.11"
+  tag: "3.6.6_core8.4.11"
   pullPolicy: IfNotPresent
 ConsoleControlPaneImage:
   name: castimaging/admin-center
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ConsoleAuthenticationServiceImage:
   name: castimaging/auth-service
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ConsoleIntegratedDashboardsImage:
   name: castimaging/dashboards-v3
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
   
 #
@@ -265,23 +275,23 @@ ConsoleIntegratedDashboardsImage:
 #
 ViewerNeo4jImage:
   name: castimaging/neo4j
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ViewerServiceImage:
   name: castimaging/viewer
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ViewerEtlImage:
   name: castimaging/etl-service
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent  
 ViewerAiManagerImage:
   name: castimaging/ai-service
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 ViewerApiImage:
   name: castimaging/imaging-apis
-  tag: "3.6.5"
+  tag: "3.6.6"
   pullPolicy: IfNotPresent
 McpServerImage:
   name: castimaging/imaging-mcp-server
@@ -292,7 +302,7 @@ McpServerImage:
 #
 ExtendProxyImage:
   name: castimaging/extend-proxy
-  tag: "2.2.10"
+  tag: "2.2.11"
   pullPolicy: IfNotPresent 
 #
 # Optional - this image is needed when UseCookieAdapter is set to true,

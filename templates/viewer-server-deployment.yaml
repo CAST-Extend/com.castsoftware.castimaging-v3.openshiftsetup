@@ -169,6 +169,10 @@ spec:
           command: ['sh', '-c', "/opt/imaging/config/init.sh"]
           name: viewer-server
           env:
+{{- range $key, $value := .Values.SERVER }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+{{- end }}
             - name: TZ
               value: "UTC"
             - name: EUREKA_HOST
@@ -201,6 +205,30 @@ spec:
               protocol: TCP
             - containerPort: 9000
               protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /healthcheck
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 9000
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 9000
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
+            successThreshold: 1
           resources:
             {{- toYaml .Values.ViewerServerServiceResources | nindent 12 }}
           volumeMounts:

@@ -95,6 +95,10 @@ spec:
               mountPath: /open-ai-volume
       containers:
         - env:
+{{- range $key, $value := .Values.AIMANAGER }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+{{- end }}
             - name: TZ
               value: "UTC"
             - name: NEO4J_BOLT_ENDPOINT
@@ -132,6 +136,27 @@ spec:
           ports:
             - containerPort: 8082
               protocol: TCP
+          startupProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            tcpSocket:
+              port: 8082
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 30
+            successThreshold: 1
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 30
+            successThreshold: 1
           resources:
             {{- toYaml .Values.ViewerAiManagerResources | nindent 12 }}
           volumeMounts:

@@ -78,7 +78,11 @@ spec:
             until pg_isready -h console-postgres -p 2285; do echo waiting for postgres...; sleep 2; done; echo postgres is ready!
 {{- end }}
       containers:
-        - env:       
+        - env:
+{{- range $key, $value := .Values.SSOSERVICE }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+{{- end }}
 {{- if .Values.CustomPostgres.enable }}
             - name: KC_DB_URL
               value: jdbc:postgresql://{{ .Values.CustomPostgres.host }}:{{ .Values.CustomPostgres.port }}/keycloak
