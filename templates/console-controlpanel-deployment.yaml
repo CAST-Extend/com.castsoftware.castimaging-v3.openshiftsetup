@@ -204,7 +204,7 @@ spec:
           name: console-control-panel
           startupProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: 8098
               scheme: HTTP
             initialDelaySeconds: 30
@@ -213,16 +213,7 @@ spec:
             failureThreshold: 30
           livenessProbe:
             httpGet:
-              path: /actuator/health
-              port: 8098
-              scheme: HTTP
-            periodSeconds: 10
-            timeoutSeconds: 10
-            failureThreshold: 20
-            successThreshold: 1
-          readinessProbe:
-            httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8098
               scheme: HTTP
             periodSeconds: 10

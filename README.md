@@ -4,6 +4,19 @@ General concepts about CAST Imaging install can be found here: https://doc.casts
 
 ## Helm Chart Release Notes
 
+### 3.6.7 (vs 3.6.6)
+
+#### New Features
+- **Proxy exclusions auto-update job**: a new `proxy-exclusions-update-script` ConfigMap and a suspended `proxy-exclusions-cronjob` CronJob are shipped with the chart. It can be triggered manually (`oc create job proxy-exclusions-cronjob-<id> --from=cronjob/proxy-exclusions-cronjob -n <namespace>`) to refresh `control_panel.settings.non_proxy_hosts` from the subnets of currently registered services, when `proxy_settings_mode` is `MANUAL_PROXY`.
+- New `AIMANAGER.SUMMARY_LOG_LEVEL: info` default environment variable.
+
+#### Security
+- **`UseCustomTrustStore` removed**: self-signed or otherwise unverifiable certificate on an internal service is no longer a blocking issue. The `UseCustomTrustStore` option and the `auth.caCertificate` value have been removed from `values.yaml`, along with the `authcacrt` ConfigMap and the associated init container/volume mounts in `console-authentication-service`.
+  ⚠️ **Migration note**: if your existing `values.yaml` sets `UseCustomTrustStore` / `auth.caCertificate`, you can remove them: they are no longer used by the chart.
+
+#### Fixes
+- **`license-extend-update-script.sql` fixed**: `extend_url` is now only auto-populated when currently empty, so a manually-configured Extend URL is no longer overwritten on every `helm upgrade`. Updating `extend_apikey` no longer depends on `ExtendProxy.enable`.
+
 ### 3.6.6 (vs 3.6.5)
 
 #### New Features

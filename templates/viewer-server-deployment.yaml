@@ -166,7 +166,7 @@ spec:
       containers:
         - image: "{{ .Values.ViewerServiceImage.name }}:{{ .Values.ViewerServiceImage.tag}}"
           imagePullPolicy: "{{ .Values.ViewerServiceImage.pullPolicy }}"
-          command: ['sh', '-c', "/opt/imaging/config/init.sh"]
+          command: ['sh', '-c', "mkdir -p /run/nginx && exec /opt/imaging/config/init.sh"]
           name: viewer-server
           env:
 {{- range $key, $value := .Values.SERVER }}
@@ -221,14 +221,6 @@ spec:
             timeoutSeconds: 10
             failureThreshold: 10
             successThreshold: 1
-          readinessProbe:
-            httpGet:
-              path: /healthcheck
-              port: 9000
-            periodSeconds: 30
-            timeoutSeconds: 10
-            failureThreshold: 10
-            successThreshold: 1
           resources:
             {{- toYaml .Values.ViewerServerServiceResources | nindent 12 }}
           volumeMounts:
@@ -242,6 +234,8 @@ spec:
               mountPath: /var/run
             - name: nginx-cache
               mountPath: /var/cache/nginx
+            - name: nginx-lib-tmp
+              mountPath: /var/lib/nginx/tmp
             - name: log
               mountPath: /opt/imaging/imaging-service/logs
             - name: servernginxconf
@@ -268,6 +262,8 @@ spec:
         - name: nginx
           emptyDir: {}
         - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-lib-tmp
           emptyDir: {}
         - name: nginx-run
           emptyDir: {}

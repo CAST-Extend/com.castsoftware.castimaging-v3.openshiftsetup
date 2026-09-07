@@ -129,6 +129,8 @@ spec:
             - name: PUBLIC_URL
               value: {{ .Values.FrontEndHost }}
 {{- end }}
+            - name: ACTIVEMQ_BROKER_URL
+              value: tcp://console-control-panel:2381
           image: "{{ .Values.ConsoleSSOServiceImage.name }}:{{ .Values.ConsoleSSOServiceImage.tag}}"
           imagePullPolicy: "{{ .Values.ConsoleSSOServiceImage.pullPolicy }}"
           name: console-sso-service
@@ -142,15 +144,6 @@ spec:
             timeoutSeconds: 10
             failureThreshold: 20
           livenessProbe:
-            httpGet:
-              path: /auth/health/ready
-              port: 9000
-              scheme: HTTP
-            periodSeconds: 10
-            timeoutSeconds: 10
-            failureThreshold: 20
-            successThreshold: 1
-          readinessProbe:
             httpGet:
               path: /auth/health/ready
               port: 9000
