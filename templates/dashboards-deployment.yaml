@@ -138,6 +138,8 @@ spec:
               value: "8091"
             - name: eureka.instance.instanceId
               value: console-dashboards:8097
+            - name: LOGS_FOLDER
+              value: /opt/cast/imaging-dashboards/logs
 {{- if .Values.DashboardsJavaToolOptions }}
             - name: JAVA_TOOL_OPTIONS
               value: "{{ .Values.DashboardsJavaToolOptions }}"
@@ -155,6 +157,8 @@ spec:
           resources:
             {{- toYaml .Values.IntegratedDashboardsResources | nindent 12 }}
           volumeMounts:
+            - mountPath: /opt/cast/imaging-dashboards/logs
+              name: dashboards-logs
             - name: app-resources
               mountPath: /app/resources
 {{- if .Values.EnablePostgresSSL }}
@@ -168,6 +172,9 @@ spec:
         - name: imagepull-sec  
 {{- end }}
       volumes:
+        - name: dashboards-logs
+          persistentVolumeClaim:
+            claimName: pvc-dashboards-logs
         - name: app-resources
           emptyDir: {}
 {{- if .Values.EnablePostgresSSL }}

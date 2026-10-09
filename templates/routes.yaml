@@ -5,8 +5,10 @@ apiVersion: route.openshift.io/v1
 metadata:
   name: castimaging-route
   namespace: {{ .Release.Namespace }}
-  {{- if .Values.ContextUrl.enable }}
   annotations:
+    # Max duration of a request before the router aborts it with a Gateway Timeout (504)
+    haproxy.router.openshift.io/timeout: {{ .Values.NetworkTimeoutSeconds }}s
+  {{- if .Values.ContextUrl.enable }}
     # Rewrite path: /context/something -> /something
     haproxy.router.openshift.io/rewrite-target: /
     # Set X-Forwarded-Prefix so Spring Boot knows the context path
@@ -40,6 +42,8 @@ apiVersion: route.openshift.io/v1
 metadata:
   name: extendproxy-route
   namespace: {{ .Release.Namespace }}
+  annotations:
+    haproxy.router.openshift.io/timeout: {{ .Values.ExtendProxy.timeoutSeconds }}s
 spec:
   host: {{ .Values.ExtendProxy.exthostname }}
   path: /

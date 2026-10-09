@@ -17,7 +17,7 @@ done
 declare -A LOG_PATHS=(
   [viewer-server]="/opt/imaging/imaging-service/logs"
   [viewer-etl]="/opt/imaging/imaging-etl/logs"
-  [console-postgres]="/var/lib/postgresql/data/log"
+  [console-postgres]="/var/lib/pgsql/data/userdata/log"
 
 )
 for SVC in "${!LOG_PATHS[@]}"; do
@@ -26,8 +26,14 @@ for SVC in "${!LOG_PATHS[@]}"; do
     echo "No pod found for $SVC, skipping."
     continue
   fi
+  LOGPATH="${LOG_PATHS[$SVC]}"
+  if [ "$SVC" = "console-postgres" ]; then
+    # Read the actual PGDATA from the container (RHEL postgresql image: /var/lib/pgsql/data/userdata)
+    PGDATA=$(kubectl exec $POD -n $NAMESPACE -c console-postgres -- printenv PGDATA 2>/dev/null | tr -d '\r')
+    [ -n "$PGDATA" ] && LOGPATH="$PGDATA/log"
+  fi
   echo "=== Copying logs from $POD ($SVC) ==="
-  kubectl cp -n $NAMESPACE $POD:${LOG_PATHS[$SVC]} $DEST/$SVC
+  kubectl cp -n $NAMESPACE $POD:$LOGPATH $DEST/$SVC
 done
 
 # Retrieving standard output log from all pods

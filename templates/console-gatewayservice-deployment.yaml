@@ -42,7 +42,8 @@ spec:
   selector:
     matchLabels:
       imaging.service: console-gateway-service
-  strategy: {}
+  strategy:
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -106,10 +107,8 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
 {{- end }}
-            - name: HOST_GATEWAY
+            - name: HOST_HOSTNAME
               value: console-gateway-service
-            - name: PORT_GATEWAY
-              value: "8090"
             - name: HOST_CONTROL_PANEL
               value: console-control-panel
             - name: PORT_CONTROL_PANEL
@@ -130,6 +129,8 @@ spec:
             - name: APP_CONTEXT
               value: {{ .Values.ContextUrl.appcontext }}
 {{- end }}
+            - name: LOGS_FOLDER
+              value: /opt/cast/imaging-services/logs/gateway
           image: "{{ .Values.ConsoleGatewayServiceImage.name }}:{{ .Values.ConsoleGatewayServiceImage.tag}}"
           imagePullPolicy: "{{ .Values.ConsoleGatewayServiceImage.pullPolicy }}"
           name: console-gateway-service
@@ -156,7 +157,14 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.GatewayServiceResources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /opt/cast/imaging-services/logs/gateway
+              name: gatewayservice-logs
       restartPolicy: Always
+      volumes:
+        - name: gatewayservice-logs
+          persistentVolumeClaim:
+            claimName: pvc-gatewayservice-logs
 {{- if .Values.UseImagePullSecrets }}       
       imagePullSecrets:
         - name: imagepull-sec 

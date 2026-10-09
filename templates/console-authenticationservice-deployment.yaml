@@ -30,7 +30,8 @@ spec:
   selector:
     matchLabels:
       imaging.service: console-authentication-service
-  strategy: {}
+  strategy:
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -92,10 +93,8 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
 {{- end }}
-            - name: HOST_AUTH_SERVICE
+            - name: HOST_HOSTNAME
               value: console-authentication-service
-            - name: PORT_AUTH_SERVICE
-              value: "8092"
             - name: HOST_CONTROL_PANEL
               value: console-control-panel
             - name: PORT_CONTROL_PANEL
@@ -115,11 +114,20 @@ spec:
             - name: DB_PORT
               value: "2285"
 {{- end }}
+            - name: DB_USER
+              value: operator
+            - name: DB_DATABASE
+              value: postgres
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
                   key: operator-db-password
+            - name: DB_ENCRYPTED_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
+                  key: operator-db-password-crypted2
             - name: KC_USER
               value: "admin"
             - name: KC_PASSWORD
@@ -140,6 +148,8 @@ spec:
             - name: NGINX_HOST
               value: {{ .Values.FrontEndHost }}
 {{- end }}
+            - name: LOGS_FOLDER
+              value: /opt/cast/imaging-services/logs/auth-service
           image: "{{ .Values.ConsoleAuthenticationServiceImage.name }}:{{ .Values.ConsoleAuthenticationServiceImage.tag }}"
           imagePullPolicy: "{{ .Values.ConsoleAuthenticationServiceImage.pullPolicy }}"
           name: console-authentication-service
@@ -166,7 +176,14 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.AuthenticationServiceResources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /opt/cast/imaging-services/logs/auth-service
+              name: authenticationservice-logs
       restartPolicy: Always
+      volumes:
+        - name: authenticationservice-logs
+          persistentVolumeClaim:
+            claimName: pvc-authenticationservice-logs
 {{- if .Values.UseImagePullSecrets }}      
       imagePullSecrets:
         - name: imagepull-sec

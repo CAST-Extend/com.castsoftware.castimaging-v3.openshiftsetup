@@ -4,6 +4,25 @@ General concepts about CAST Imaging install can be found here: https://doc.casts
 
 ## Helm Chart Release Notes
 
+### 3.6.8 (vs 3.6.7)
+
+#### New Features
+- **Configurable network timeouts**: two new `values.yaml` settings control how long a request may take on the OpenShift Route before the router aborts it with a Gateway Timeout (504). They are applied through the `haproxy.router.openshift.io/timeout` annotation when `Routes.enable=true`:
+  - `NetworkTimeoutSeconds: 300`: `castimaging-route` (main application, to `console-gateway-service`). Increase this if you see timeouts on long-running calls.
+  - `ExtendProxy.timeoutSeconds: 3600`: `extendproxy-route` (bundle uploads can be large/slow, hence the much higher default).
+
+  Previously no timeout annotation was set, so the OpenShift router default (30s) applied.
+- **Persistent log volumes for console services**: logs of console-control-panel, console-gateway-service, console-authentication-service, console-service, console-sso-service and console-dashboards are now written to dedicated PersistentVolumeClaims (`pvc-controlpanel-logs`, `pvc-gatewayservice-logs`, `pvc-authenticationservice-logs`, `pvc-consoleservice-logs`, `pvc-ssoservice-logs`, `pvc-dashboards-logs`, created with `helm.sh/resource-policy: keep`), so they survive pod restarts. Their sizes are configurable via the new `size_controlpanel_logs`, `size_gatewayservice_logs`, `size_authenticationservice_logs`, `size_consoleservice_logs`, `size_ssoservice_logs` and `size_dashboards_logs` values (default `2Gi` each). Keycloak (sso-service) is configured to log both to the console and to a daily-rotated file (`sso.log`, max 10M per file).
+  Volume write permissions rely on the `fsGroup` assigned by the OpenShift SCC (`restricted-v2`), so no fixed `fsGroup` is set in the chart.
+
+#### Security
+- **`guest` database user removed**: the embedded Postgres init script no longer creates the `guest` user, and the `guest-db-password` key has been removed from the `imaging-pwd-sec` Secret (`GuestDbPassword` value no longer used). Console services now connect explicitly with the `operator` user (`DB_USER` / `DB_USERNAME`, `DB_DATABASE=postgres`); console-authentication-service additionally receives `DB_ENCRYPTED_PASSWORD` from the `operator-db-password-crypted2` Secret key.
+  ⚠️ **Migration note**: `GuestDbPassword` can be removed from your custom `values.yaml`, and the `guest-db-password` key is no longer required in an `existingSecret`. On existing deployments, the `guest` user already present in Postgres is not dropped by the upgrade (it can be removed manually with `DROP USER guest;` if not used elsewhere).
+
+#### Configuration Changes
+- **Deployment strategy set to `Recreate`** on console-authentication-service, console-service, console-control-panel, console-gateway-service, console-sso-service, mcp-server, viewer-aimanager, viewer-api, viewer-etl and viewer-server (previously the default `RollingUpdate`).
+- Image updates: all CAST Imaging application images 3.6.8.
+
 ### 3.6.7 (vs 3.6.6)
 
 #### New Features
