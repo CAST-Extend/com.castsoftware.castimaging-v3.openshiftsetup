@@ -14,6 +14,13 @@ General concepts about CAST Imaging install can be found here: https://doc.casts
   Previously no timeout annotation was set, so the OpenShift router default (30s) applied.
 - **Persistent log volumes for console services**: logs of console-control-panel, console-gateway-service, console-authentication-service, console-service, console-sso-service and console-dashboards are now written to dedicated PersistentVolumeClaims (`pvc-controlpanel-logs`, `pvc-gatewayservice-logs`, `pvc-authenticationservice-logs`, `pvc-consoleservice-logs`, `pvc-ssoservice-logs`, `pvc-dashboards-logs`, created with `helm.sh/resource-policy: keep`), so they survive pod restarts. Their sizes are configurable via the new `size_controlpanel_logs`, `size_gatewayservice_logs`, `size_authenticationservice_logs`, `size_consoleservice_logs`, `size_ssoservice_logs` and `size_dashboards_logs` values (default `2Gi` each). Keycloak (sso-service) is configured to log both to the console and to a daily-rotated file (`sso.log`, max 10M per file).
   Volume write permissions rely on the `fsGroup` assigned by the OpenShift SCC (`restricted-v2`), so no fixed `fsGroup` is set in the chart.
+- **MCP Server 3.1 (`imaging-mcp-server` 3.1.0-beta6), now enabled by default (`McpServer.enable: true`)**: the `mcp-server` pod now runs the MCP Aggregator Gateway with the Structural, Semantic search and Text2Cypher MCP servers behind it (see https://doc.castsoftware.com/imaging/mcp-server/imaging/3.1/docker/). Requires CAST Imaging ≥ 3.6.8.
+  - The `mcp-server` Service now exposes the gateway port **8285** (previously 8282). The gateway registers in the Control Panel under the same `MCPSERVER` name, so clients keep using `<FrontEndHost>/mcp`. The three MCP servers listen on the pod loopback only (8282 / 8287 / 8289).
+  - The `mcpserverappconfig` ConfigMap (`app.config`) is replaced by the `mcpserver-registry` ConfigMap holding the gateway routing registry (`mcp_servers.json`, mounted at `/opt/cast/mcp-suite/config/`). External MCP servers can be added to it.
+  - All other settings are environment variables, set in the `MCPSERVER` section of `values.yaml` with the same names as the docker `.env` file: `STRUCTURAL_MCP_ENABLED`, `SEMANTIC_MCP_ENABLED`, `TEXT_TO_CYPHER_MCP_ENABLED`, `*_TOOL_SURFACE_PROFILE`, `IMAGING_CODE`, `LOG_LEVEL` (`INFO` or `DEBUG` only, replaces `DEBUG_MODE`), telemetry settings... `IMAGING_BASE_URL` (Text2Cypher deep links) defaults to `<FrontEndHost>[<appcontext>]/imaging`.
+  - Neo4j is now used (Semantic search and Text2Cypher): the pod connects to `bolt://viewer-neo4j:7687` with the `neo4j-password` Secret key, and an init container waits for console-control-panel and viewer-neo4j.
+  - Logs are now written to `/opt/cast/mcp-suite/logs` (same `pvc-mcpserver-logs` volume, one sub-folder per process). A new `pvc-mcpserver-data` volume (`size_mcpserver_data`, default `1Gi`, `helm.sh/resource-policy: keep`) holds the Text2Cypher SQLite stores (`/opt/cast/mcp-suite/data`).
+  - The pod runs with the UID/fsGroup assigned by the OpenShift SCC (`restricted-v2`, no fixed user in the chart): `emptyDir` volumes are mounted on `/tmp` and `/var/run` (supervisord) and `HOME` is set to `/tmp`. Default `McpServerResources` increased to requests 0.5 CPU / 1G, limits 2 CPU / 4G (4 processes in one pod).
 
 #### Security
 - **`guest` database user removed**: the embedded Postgres init script no longer creates the `guest` user, and the `guest-db-password` key has been removed from the `imaging-pwd-sec` Secret (`GuestDbPassword` value no longer used). Console services now connect explicitly with the `operator` user (`DB_USER` / `DB_USERNAME`, `DB_DATABASE=postgres`); console-authentication-service additionally receives `DB_ENCRYPTED_PASSWORD` from the `operator-db-password-crypted2` Secret key.
@@ -21,7 +28,7 @@ General concepts about CAST Imaging install can be found here: https://doc.casts
 
 #### Configuration Changes
 - **Deployment strategy set to `Recreate`** on console-authentication-service, console-service, console-control-panel, console-gateway-service, console-sso-service, mcp-server, viewer-aimanager, viewer-api, viewer-etl and viewer-server (previously the default `RollingUpdate`).
-- Image updates: all CAST Imaging application images 3.6.8.
+- Image updates: `imaging-mcp-server` 3.1.0-beta6, and all CAST Imaging application images 3.6.8.
 
 ### 3.6.7 (vs 3.6.6)
 
