@@ -1,3 +1,4 @@
+{{- if .Values.Viewer.enable }}
 kind: Service
 apiVersion: v1
 metadata:
@@ -175,3 +176,4 @@ spec:
             claimName: pvc-imagingviewer-v3-aimanager-logs
         - name: open-ai-dir
           emptyDir: {}
+{{- end }}

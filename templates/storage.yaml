@@ -55,6 +55,7 @@ spec:
   storageClassName: {{ .Values.DiskClassName }}
 {{- end }}
 ---
+{{- if .Values.Viewer.enable }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -126,8 +127,9 @@ spec:
   resources:
     requests:
       storage: {{ .Values.size_imagingviewer_v3_aimanager_logs }}
+{{- end }}
 ---
-{{- if .Values.McpServer.enable }}
+{{- if and .Values.Viewer.enable .Values.McpServer.enable }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -147,6 +149,7 @@ spec:
       storage: {{ .Values.size_mcpserver_logs }}
 {{- end }}
 ---
+{{- if .Values.Viewer.enable }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -164,6 +167,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.size_imagingviewer_v3_api_logs }}
+{{- end }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
