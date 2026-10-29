@@ -1,0 +1,49 @@
+{{- /*
+  Checks the custom labels / annotations values (commonLabels, commonAnnotations, resourceMetadata,
+  componentMetadata - see values.yaml). Renders nothing.
+*/ -}}
+{{- $kinds := list "deployment" "statefulSet" "job" "pvc" "service" "configMap" "secret" "route" "serviceAccount" "rbac" "storageClass" }}
+{{- $components := list "console-analysis-node" "console-analysis-node-autoscaler" "console-authentication-service" "console-control-panel" "console-dashboards" "console-gateway-service" "console-postgres" "console-service" "console-sso-service" "extendproxy" "mcp-server" "viewer-aimanager" "viewer-api" "viewer-etl" "viewer-neo4j" "viewer-server" }}
+{{- /* Keys set by the chart itself: used by selectors / the application, or required by OpenShift / Helm */}}
+{{- $reservedLabels := list "app" "imaging.group" "imaging.service" "version" "console.service" "console.network/aip-network" }}
+{{- $reservedAnnotationPrefixes := list "helm.sh/" "haproxy.router.openshift.io/" "sidecar.istio.io/inject" "storageclass.kubernetes.io/is-default-class" "checksum/script" "cluster-autoscaler.kubernetes.io/safe-to-evict" "karpenter.sh/do-not-disrupt" }}
+
+{{- range $k, $_ := .Values.resourceMetadata }}
+  {{- if not (has $k $kinds) }}
+    {{- fail (printf "ERROR: resourceMetadata.%s is not a valid resource type (valid types: %s)." $k (join ", " $kinds)) }}
+  {{- end }}
+{{- end }}
+{{- range $k, $_ := .Values.componentMetadata }}
+  {{- if not (has $k $components) }}
+    {{- fail (printf "ERROR: componentMetadata.%s is not a valid component (valid components: %s)." $k (join ", " $components)) }}
+  {{- end }}
+{{- end }}
+
+{{- /* All the labels / annotations maps, with their path for the error messages */}}
+{{- $labelSets := dict "commonLabels" .Values.commonLabels }}
+{{- $annotationSets := dict "commonAnnotations" .Values.commonAnnotations }}
+{{- range $k, $v := .Values.resourceMetadata }}
+  {{- $_ := set $labelSets (printf "resourceMetadata.%s.labels" $k) (($v | default dict).labels) }}
+  {{- $_ := set $annotationSets (printf "resourceMetadata.%s.annotations" $k) (($v | default dict).annotations) }}
+{{- end }}
+{{- range $k, $v := .Values.componentMetadata }}
+  {{- $_ := set $labelSets (printf "componentMetadata.%s.labels" $k) (($v | default dict).labels) }}
+  {{- $_ := set $annotationSets (printf "componentMetadata.%s.annotations" $k) (($v | default dict).annotations) }}
+{{- end }}
+
+{{- range $path, $set := $labelSets }}
+  {{- range $k, $_ := $set }}
+    {{- if has $k $reservedLabels }}
+      {{- fail (printf "ERROR: %s cannot contain the label '%s', it is managed by the chart (reserved labels: %s)." $path $k (join ", " $reservedLabels)) }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- range $path, $set := $annotationSets }}
+  {{- range $k, $_ := $set }}
+    {{- range $p := $reservedAnnotationPrefixes }}
+      {{- if hasPrefix $p $k }}
+        {{- fail (printf "ERROR: %s cannot contain the annotation '%s', it is managed by the chart (reserved: %s)." $path $k (join ", " $reservedAnnotationPrefixes)) }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

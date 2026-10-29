@@ -98,6 +98,8 @@ data:
 
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "labels" "indent" 2 "block" true) }}
   name: console-v3-postgresqlconf
   namespace: {{ .Release.Namespace }}
 ---
@@ -105,6 +107,8 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "labels" "indent" 2 "block" true) }}
   name: console-v3-pghbaconf
   namespace: {{ .Release.Namespace }}
 data:
@@ -171,6 +175,8 @@ data:
 
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "labels" "indent" 2 "block" true) }}
   name: console-v3-init-db   
   namespace: {{ .Release.Namespace }}
 {{- end }}
@@ -222,6 +228,8 @@ data:
 
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-postgres" "field" "labels" "indent" 2 "block" true) }}
   name: init-db-custom-pg   
   namespace: {{ .Release.Namespace }}
 {{- end }}

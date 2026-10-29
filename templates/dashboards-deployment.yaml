@@ -1,7 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-dashboards" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-dashboards" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: console-dashboards
@@ -18,7 +20,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-dashboards" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-dashboards" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: console-dashboards
@@ -35,8 +39,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-dashboards" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-dashboards" "field" "labels" "indent" 8) }}
         console.network/aip-network: "true"
         app: castimaging
         imaging.group: console
@@ -167,6 +173,9 @@ spec:
               readOnly: true
 {{- end }}
       restartPolicy: Always
+{{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+{{- end }}
 {{- if .Values.UseImagePullSecrets }}       
       imagePullSecrets:
         - name: imagepull-sec  

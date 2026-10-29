@@ -2,8 +2,10 @@
 kind: Service
 apiVersion: v1
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "viewer-api" "field" "annotations" "indent" 2 "block" true) }}
   name: viewer-api
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "viewer-api" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: viewer
     imaging.service: viewer-api
@@ -19,7 +21,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-api" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-api" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: viewer
     imaging.service: viewer-api
@@ -36,8 +40,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-api" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-api" "field" "labels" "indent" 8) }}
         app: castimaging
         imaging.group: viewer
         imaging.service: viewer-api
@@ -180,6 +186,9 @@ spec:
             claimName: pvc-imagingviewer-v3-api-logs
         - name: api-config-dir
           emptyDir: {}
+{{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+{{- end }}
 {{- if .Values.UseImagePullSecrets }}              
       imagePullSecrets:
         - name: imagepull-sec

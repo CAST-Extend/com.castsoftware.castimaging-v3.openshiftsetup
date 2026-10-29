@@ -3,9 +3,11 @@
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "route" "component" "console-gateway-service" "field" "labels" "indent" 2 "block" true) }}
   name: castimaging-route
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "route" "component" "console-gateway-service" "field" "annotations" "indent" 4) }}
     # Max duration of a request before the router aborts it with a Gateway Timeout (504)
     haproxy.router.openshift.io/timeout: {{ .Values.NetworkTimeoutSeconds }}s
   {{- if .Values.ContextUrl.enable }}
@@ -40,9 +42,11 @@ spec:
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "route" "component" "extendproxy" "field" "labels" "indent" 2 "block" true) }}
   name: extendproxy-route
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "route" "component" "extendproxy" "field" "annotations" "indent" 4) }}
     haproxy.router.openshift.io/timeout: {{ .Values.ExtendProxy.timeoutSeconds }}s
 spec:
   host: {{ .Values.ExtendProxy.exthostname }}

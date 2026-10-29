@@ -1,7 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-sso-service" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-sso-service" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: console-sso-service
@@ -18,7 +20,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-sso-service" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-sso-service" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: console-sso-service
@@ -35,8 +39,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-sso-service" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-sso-service" "field" "labels" "indent" 8) }}
         console.network/aip-network: "true"
         app: castimaging
         imaging.group: console
@@ -180,6 +186,9 @@ spec:
         - name: ssoservice-logs
           persistentVolumeClaim:
             claimName: pvc-ssoservice-logs
+{{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+{{- end }}
 {{- if .Values.UseImagePullSecrets }}       
       imagePullSecrets:
         - name: imagepull-sec  
@@ -188,16 +197,31 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: keycloak-init-job
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-sso-service" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-sso-service" "field" "labels" "indent" 2 "block" true) }}
+  name: keycloak-init-job-{{ include "imaging.jobSuffix" (list . "console-ssoservice-configmap.yaml" "init-keycloak.sh") }}
   namespace: {{ .Release.Namespace }}
 spec:
-  backoffLimit: 0
+  backoffLimit: 3  # init-keycloak.sh is idempotent: retry transient failures (e.g. DB restarting)
   template:
     metadata:
+      {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-sso-service" "field" "labels" "indent" 6 "block" true) }}
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-sso-service" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       restartPolicy: Never
+{{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+{{- end }}
+{{- if .Values.UseImagePullSecrets }}
+      imagePullSecrets:
+        - name: imagepull-sec
+{{- end }}
       containers:
         - name: keycloak-init
           image: "{{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag}}"
@@ -220,6 +244,11 @@ spec:
             - name: keycloak-init-script
               mountPath: "/init-keycloak.sh"               
               subPath: init-keycloak.sh
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           resources:
             {{- toYaml .Values.InitContainerResources | nindent 12 }}
       volumes:

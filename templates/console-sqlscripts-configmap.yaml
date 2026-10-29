@@ -1,6 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-control-panel" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-control-panel" "field" "labels" "indent" 2 "block" true) }}
   name: contexturl-controlpanel-update-script
   namespace: {{ .Release.Namespace }}
 data:
@@ -16,6 +18,8 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-service" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-service" "field" "labels" "indent" 2 "block" true) }}
   name: license-extend-update-script
   namespace: {{ .Release.Namespace }}
 data:
@@ -36,6 +40,8 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-sso-service" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "console-sso-service" "field" "labels" "indent" 2 "block" true) }}
   name: contexturl-keycloak-update-script
   namespace: {{ .Release.Namespace }}
 data:

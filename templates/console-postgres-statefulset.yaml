@@ -2,7 +2,9 @@
 apiVersion: v1
 kind: Service
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-postgres" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-postgres
   name: console-postgres
@@ -18,12 +20,17 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: postgres-init-job
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "labels" "indent" 2 "block" true) }}
+  name: postgres-init-job-{{ include "imaging.jobSuffix" (list . "console-postgres-configmap.yaml" "init-db.sh") }}
   namespace: {{ .Release.Namespace }}
 spec:
+  backoffLimit: 3  # init-db.sh is idempotent: retry transient failures (e.g. DB unreachable)
   template:
     metadata:
+      {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "labels" "indent" 6 "block" true) }}
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
     spec:
   {{- if .Values.EnforceNodeAffinity }}
@@ -40,7 +47,14 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
-      restartPolicy: Never  
+      restartPolicy: Never
+  {{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+  {{- end }}
+  {{- if .Values.UseImagePullSecrets }}
+      imagePullSecrets:
+        - name: imagepull-sec
+  {{- end }}
       containers:
         - name: postgres-init
           image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag}}"
@@ -78,7 +92,9 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-postgres" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-postgres
   name: console-postgres
@@ -92,13 +108,25 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-postgres" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
+        # Never let a cluster autoscaler evict the database to free a worker.
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+        karpenter.sh/do-not-disrupt: "true"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-postgres" "field" "labels" "indent" 8) }}
         console.network/aip-network: "true"
         app: castimaging
         imaging.service: console-postgres
     spec:
       terminationGracePeriodSeconds: 120
+  {{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+  {{- end }}
+  {{- if .Values.UseImagePullSecrets }}
+      imagePullSecrets:
+        - name: imagepull-sec
+  {{- end }}
   {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -242,13 +270,17 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: custom-postgres-init-job
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "labels" "indent" 2 "block" true) }}
+  name: custom-postgres-init-job-{{ include "imaging.jobSuffix" (list . "console-postgres-configmap.yaml" "init-db-custom-pg.sh") }}
   namespace: {{ .Release.Namespace }}
 spec:
-  backoffLimit: 0
+  backoffLimit: 3  # init-db-custom-pg.sh is idempotent: retry transient failures (e.g. DB unreachable)
   template:
     metadata:
+      {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "labels" "indent" 6 "block" true) }}
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-postgres" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
     spec:
   {{- if .Values.EnforceNodeAffinity }}
@@ -262,6 +294,13 @@ spec:
             {{- toYaml .Values.nodeSelectorAppcastimaging | nindent 12 }}
   {{- end }}
       restartPolicy: Never
+  {{- if .Values.ServiceAccountName }}
+      serviceAccountName: {{ .Values.ServiceAccountName }}
+  {{- end }}
+  {{- if .Values.UseImagePullSecrets }}
+      imagePullSecrets:
+        - name: imagepull-sec
+  {{- end }}
       securityContext:
         runAsNonRoot: true
         seccompProfile:
