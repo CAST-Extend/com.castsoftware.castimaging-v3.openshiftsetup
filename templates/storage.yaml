@@ -2,8 +2,10 @@
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "storageClass" "component" "" "field" "labels" "indent" 2 "block" true) }}
   name: crc-csi-hostpath-provisioner-delete
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "storageClass" "component" "" "field" "annotations" "indent" 4) }}
     storageclass.kubernetes.io/is-default-class: 'false'
     helm.sh/resource-policy: keep
 provisioner: kubevirt.io.hostpath-provisioner
@@ -23,8 +25,10 @@ metadata:
   name: pvc-shared-datadir
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-analysis-node" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep  
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-analysis-node" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-analysis-node
 spec:
@@ -42,8 +46,10 @@ metadata:
   name: db-data
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-postgres" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-postgres" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-postgres
 spec:
@@ -62,8 +68,10 @@ metadata:
   name: pvc-imagingviewer-v3-server-log
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-server" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep  
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-server" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: viewer-server
 spec:
@@ -80,8 +88,10 @@ metadata:
   name: pvc-imagingviewer-v3-etl-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-etl" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-etl" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: viewer-etl
 spec:
@@ -98,8 +108,10 @@ metadata:
   name: pvc-imagingviewer-v3-etl-csvarchive
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-etl" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-etl" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: viewer-etl
 spec:
@@ -116,8 +128,10 @@ metadata:
   name: pvc-imagingviewer-v3-aimanager-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-aimanager" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-aimanager" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: viewer-aimanager
 spec:
@@ -136,8 +150,10 @@ metadata:
   name: pvc-mcpserver-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "mcp-server" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "mcp-server" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: mcp-server
 spec:
@@ -156,8 +172,10 @@ metadata:
   name: pvc-imagingviewer-v3-api-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-api" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "viewer-api" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: viewer-api
 spec:
@@ -175,8 +193,10 @@ metadata:
   name: pvc-controlpanel-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-control-panel" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-control-panel" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-control-panel
 spec:
@@ -193,8 +213,10 @@ metadata:
   name: pvc-gatewayservice-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-gateway-service" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-gateway-service" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-gateway-service
 spec:
@@ -211,8 +233,10 @@ metadata:
   name: pvc-authenticationservice-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-authentication-service" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-authentication-service" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-authentication-service
 spec:
@@ -229,8 +253,10 @@ metadata:
   name: pvc-consoleservice-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-service" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-service" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-service
 spec:
@@ -247,8 +273,10 @@ metadata:
   name: pvc-ssoservice-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-sso-service" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-sso-service" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-sso-service
 spec:
@@ -265,8 +293,10 @@ metadata:
   name: pvc-dashboards-logs
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-dashboards" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "console-dashboards" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-dashboards
 spec:
@@ -284,8 +314,10 @@ metadata:
   name: pvc-extendproxy-data
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "extendproxy" "field" "annotations" "indent" 4) }}
     helm.sh/resource-policy: keep 
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "extendproxy" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: extendproxy 
 spec:

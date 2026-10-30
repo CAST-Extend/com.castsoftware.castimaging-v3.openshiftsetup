@@ -1,8 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-analysis-node" "field" "annotations" "indent" 2 "block" true) }}
   name: console-analysis-node
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-analysis-node" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-analysis-node
   namespace: {{ .Release.Namespace }}
@@ -17,7 +19,9 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-analysis-node" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-analysis-node" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.service: console-analysis-node
     version: {{ .Values.ConsoleAnalysisNodeImage.tag| default .Values.version }}
@@ -32,8 +36,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-analysis-node" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "statefulSet" "component" "console-analysis-node" "field" "labels" "indent" 8) }}
         console.network/aip-network: "true"
         app: castimaging
         imaging.service: console-analysis-node
@@ -250,6 +256,7 @@ spec:
 {{- end }}
   volumeClaimTemplates:
     - metadata:
+        {{- include "imaging.volumeClaimTemplateMetadata" (dict "ctx" $ "apiVersion" "apps/v1" "statefulset" "console-analysis-node-core" "claim" "castdir" "component" "console-analysis-node" "indent" 8) }}
         name: castdir
       spec:
         accessModes:

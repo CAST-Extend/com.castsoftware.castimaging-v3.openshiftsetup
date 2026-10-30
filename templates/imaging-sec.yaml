@@ -4,6 +4,8 @@ data:
   .dockerconfigjson: {{ .Values.Base64EncodedDockerconfigjson }}
 kind: Secret
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "secret" "component" "" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "secret" "component" "" "field" "labels" "indent" 2 "block" true) }}
   name: imagepull-sec
   namespace: {{ .Release.Namespace }}
 type: kubernetes.io/dockerconfigjson
@@ -14,6 +16,8 @@ type: kubernetes.io/dockerconfigjson
 apiVersion: v1
 kind: Secret
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "secret" "component" "" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "secret" "component" "" "field" "labels" "indent" 2 "block" true) }}
   name: imaging-pwd-sec
   namespace: {{ .Release.Namespace }}
 type: Opaque

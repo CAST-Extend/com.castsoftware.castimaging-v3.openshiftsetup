@@ -14,6 +14,8 @@ data:
     #
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "mcp-server" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "mcp-server" "field" "labels" "indent" 2 "block" true) }}
   creationTimestamp: null
   name: mcpserverappconfig
   namespace: {{.Release.Namespace}}

@@ -1,7 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-control-panel" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "console-control-panel" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: console-control-panel
@@ -21,7 +23,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-control-panel" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-control-panel" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: console-control-panel
@@ -38,8 +42,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-control-panel" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "console-control-panel" "field" "labels" "indent" 8) }}
         console.network/aip-network: "true"
         app: castimaging
         imaging.group: console

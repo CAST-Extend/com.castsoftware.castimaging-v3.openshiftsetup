@@ -78,6 +78,8 @@ data:
     \   }\n}"
 kind: ConfigMap
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "viewer-server" "field" "annotations" "indent" 2 "block" true) }}
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "configMap" "component" "viewer-server" "field" "labels" "indent" 2 "block" true) }}
   name: servernginxconf
   namespace: {{ .Release.Namespace }}
 {{- end }}

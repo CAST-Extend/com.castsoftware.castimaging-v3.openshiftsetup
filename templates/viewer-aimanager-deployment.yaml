@@ -2,8 +2,10 @@
 kind: Service
 apiVersion: v1
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "viewer-aimanager" "field" "annotations" "indent" 2 "block" true) }}
   name: viewer-aimanager
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "viewer-aimanager" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: viewer
     imaging.service: viewer-aimanager
@@ -25,7 +27,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-aimanager" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-aimanager" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: viewer
     imaging.service: viewer-aimanager
@@ -42,8 +46,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-aimanager" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "viewer-aimanager" "field" "labels" "indent" 8) }}
         app: castimaging
         imaging.group: viewer
         imaging.service: viewer-aimanager

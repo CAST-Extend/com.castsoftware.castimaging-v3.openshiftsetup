@@ -3,10 +3,12 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "extendproxy" "field" "annotations" "indent" 4) }}
   {{- if .Values.CreateLoadBalancer }}
     helm.sh/resource-policy: keep
   {{- end }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "service" "component" "extendproxy" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: extendproxy
@@ -31,7 +33,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "extendproxy" "field" "annotations" "indent" 2 "block" true) }}
   labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "extendproxy" "field" "labels" "indent" 4) }}
     app: castimaging
     imaging.group: console
     imaging.service: extendproxy
@@ -48,8 +52,10 @@ spec:
   template:
     metadata:
       annotations:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "extendproxy" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
       labels:
+        {{- include "imaging.metadata" (dict "ctx" $ "kind" "deployment" "component" "extendproxy" "field" "labels" "indent" 8) }}
         console.network/aip-network: "true"
         app: castimaging
         imaging.group: console
