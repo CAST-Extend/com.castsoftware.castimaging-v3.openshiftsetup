@@ -72,10 +72,7 @@ spec:
           preferredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
 {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 6) }}
       initContainers:
       - name: console-control-panel-healthcheck
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -89,11 +86,7 @@ spec:
             sleep 2
           done
           echo "console-control-panel is healthy!"
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 8) }}
         resources:
           {{- toYaml .Values.InitContainerResources | nindent 12 }}
       - name: postgres-scripts
@@ -120,11 +113,7 @@ spec:
           psql -h console-postgres -p 2285 -U operator -d postgres -f /home/imaging/sql/license-extend-update-script.sql
 {{- end }}
           echo "Done."
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 8) }}
         resources:
           {{- toYaml .Values.InitContainerResources | nindent 12 }}
         volumeMounts:
@@ -186,11 +175,7 @@ spec:
               name: shared-datadir
             - mountPath: /opt/cast/imaging-services/logs/console
               name: consoleservice-logs
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 10) }}
       volumes:
         - name: shared-datadir
           persistentVolumeClaim:

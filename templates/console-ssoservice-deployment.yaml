@@ -48,6 +48,7 @@ spec:
         imaging.group: console
         imaging.service: console-sso-service
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -74,6 +75,7 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 10) }}
           imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
           command:
           - /bin/sh
@@ -153,6 +155,7 @@ spec:
             - name: KC_LOG_FILE_ROTATION_ROTATE_ON_BOOT
               value: "false"
           image: "{{ .Values.ConsoleSSOServiceImage.name }}:{{ .Values.ConsoleSSOServiceImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ConsoleSSOServiceImage.pullPolicy }}"
           name: console-sso-service
           startupProbe:
@@ -207,10 +210,12 @@ spec:
         {{- include "imaging.metadata" (dict "ctx" $ "kind" "job" "component" "console-sso-service" "field" "annotations" "indent" 8) }}
         sidecar.istio.io/inject: "false"
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 6) }}
       restartPolicy: Never
       containers:
         - name: keycloak-init
           image: "{{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 10) }}
           env:
             - name: KC_INTERNAL_URL
               value: http://console-sso-service:8096/auth

@@ -65,10 +65,7 @@ spec:
           preferredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
 {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-analysis-node" "restricted" true "indent" 6) }}
       initContainers:     
         - name: init-folders-services-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -99,11 +96,7 @@ spec:
             done            
             echo "console-authentication-service is healthy!"
             echo "Done."
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-analysis-node" "restricted" true "indent" 10) }}
           volumeMounts:
             - mountPath: {{ .Values.anadir.castdirmount }}
               name: castdir
@@ -149,11 +142,7 @@ spec:
             - name: analysisnode-upgrade-script
               mountPath: /home/imaging/sql/analysisnode-upgrade-script.sql
               subPath: analysisnode-upgrade-script.sql       
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-analysis-node" "restricted" true "indent" 10) }}
       containers:
         - env:
 {{- range $key, $value := .Values.ANALYSISNODE }}
@@ -224,11 +213,7 @@ spec:
               mountPath: /etc/ssl/certs-postgres
               readOnly: true
 {{- end }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-analysis-node" "restricted" true "indent" 10) }}
       restartPolicy: Always 
 {{- if .Values.UseImagePullSecrets }}      
       imagePullSecrets:

@@ -51,6 +51,7 @@ spec:
         imaging.group: console
         imaging.service: console-control-panel
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-control-panel" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -78,6 +79,7 @@ spec:
       initContainers:
       - name: wait-for-postgres
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-control-panel" "indent" 8) }}
         imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
         command:
         - /bin/sh
@@ -90,6 +92,7 @@ spec:
 {{- end }}
       - name: postgres-scripts-ssl-setup
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-control-panel" "indent" 8) }}
         imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
         env:
           - name: PGPASSWORD
@@ -211,6 +214,7 @@ spec:
             - name: LOGS_FOLDER
               value: /opt/cast/imaging-services/logs/control-panel
           image: "{{ .Values.ConsoleControlPaneImage.name }}:{{ .Values.ConsoleControlPaneImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-control-panel" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ConsoleControlPaneImage.pullPolicy }}"
           name: console-control-panel
           startupProbe:

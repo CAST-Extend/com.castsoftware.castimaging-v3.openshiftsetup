@@ -253,6 +253,38 @@ resourceMetadata:
   storageClass:   {labels: {}, annotations: {}}
 componentMetadata: {}
 
+#
+# OPTIONAL - Security contexts of the pods and containers deployed by the chart
+#   By default, OpenShift (SCC restricted-v2) assigns runAsUser / fsGroup / supplemental groups from the
+#   namespace range (e.g. 1000xx0000), use these values to set them explicitly (e.g. when a policy engine such
+#   as Gatekeeper / Kyverno only allows a given range). The SCC used by the service account must allow them
+#   (e.g. nonroot-v2, or a custom SCC).
+#   Merged in this order (the last one wins for a given key):
+#     1. security context set by the chart for some pods (runAsNonRoot: true, seccompProfile: RuntimeDefault)
+#        and containers (allowPrivilegeEscalation: false, capabilities.drop: [ALL])
+#     2. podSecurityContext: pod spec.securityContext of all the pods (Deployments, StatefulSets, Jobs)
+#        containerSecurityContext: securityContext of all the containers and init containers
+#     3. componentSecurityContext.<component>.pod / .container: pods / containers of a component
+#        (components: see componentMetadata above)
+#   Sub-keys (seccompProfile, seLinuxOptions, capabilities...) are merged key by key; a null value removes a key
+#   set by the chart (e.g. runAsNonRoot: null).
+#   Changing these values restarts the pods, and re-runs the init Jobs.
+#   WARNING: the images follow the OpenShift convention (files owned by the root group, GID 0, with group
+#   permissions). Without runAsGroup, the process primary group is 0. Setting runAsGroup removes it, and
+#   console-postgres fails ("mkdir: cannot create directory '/var/lib/pgsql': Permission denied"). Do not set
+#   runAsGroup, or add the root group back with supplementalGroups: [0].
+#   Example:
+#     podSecurityContext:
+#       runAsUser: 1001
+#       fsGroup: 1001
+#     componentSecurityContext:
+#       viewer-neo4j:
+#         pod:
+#           fsGroup: 7474
+podSecurityContext: {}
+containerSecurityContext: {}
+componentSecurityContext: {}
+
 ####################################################################################
 
 #

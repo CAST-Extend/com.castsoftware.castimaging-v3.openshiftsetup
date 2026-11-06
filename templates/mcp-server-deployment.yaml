@@ -48,6 +48,7 @@ spec:
         imaging.group: viewer
         imaging.service: mcp-server
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "mcp-server" "indent" 6) }}
   {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -87,6 +88,7 @@ spec:
             - name: RELIES_ON_FRONTENDHOST # mcp-server should restart if value changes
               value: {{ .Values.FrontEndHost }}
           image: "{{ .Values.McpServerImage.name }}:{{ .Values.McpServerImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "mcp-server" "indent" 10) }}
           imagePullPolicy: "{{ .Values.McpServerImage.pullPolicy }}"
           command: ['sh', '-c', "/app/init.sh"]
           name: mcp-server
