@@ -163,6 +163,26 @@ spec:
   resources:
     requests:
       storage: {{ .Values.size_mcpserver_logs }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-mcpserver-data
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "mcp-server" "field" "annotations" "indent" 4) }}
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "imaging.metadata" (dict "ctx" $ "kind" "pvc" "component" "mcp-server" "field" "labels" "indent" 4) }}
+    app: castimaging
+    imaging.service: mcp-server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.DiskClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.size_mcpserver_data }}
 {{- end }}
 ---
 {{- if .Values.Viewer.enable }}

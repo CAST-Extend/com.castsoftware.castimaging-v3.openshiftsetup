@@ -101,19 +101,8 @@ spec:
               sleep 2
             done                          
             echo "console-gateway-service is healthy!"
-        - name: init-folders
-          image: "{{.Values.ConsoleIntegratedDashboardsImage.name}}:{{.Values.ConsoleIntegratedDashboardsImage.tag}}"
-          imagePullPolicy: "{{.Values.ConsoleIntegratedDashboardsImage.pullPolicy}}"
-          command:
-          - /bin/sh
-          - -c
-          - |
-            rm -rf /dashboard-volume/*
-            cp -r /app/resources/* /dashboard-volume/ || true
-          volumeMounts:    
-            - name: app-resources
-              mountPath: /dashboard-volume 
 {{- if .Values.EnablePostgresSSL }}
+          volumeMounts:
             - name: ssl-certs
               mountPath: /tmp/certs
               readOnly: true
@@ -165,8 +154,6 @@ spec:
           volumeMounts:
             - mountPath: /opt/cast/imaging-dashboards/logs
               name: dashboards-logs
-            - name: app-resources
-              mountPath: /app/resources
 {{- if .Values.EnablePostgresSSL }}
             - name: postgres-ssl-files
               mountPath: /etc/ssl/certs-postgres
@@ -184,8 +171,6 @@ spec:
         - name: dashboards-logs
           persistentVolumeClaim:
             claimName: pvc-dashboards-logs
-        - name: app-resources
-          emptyDir: {}
 {{- if .Values.EnablePostgresSSL }}
         - name: ssl-certs
           secret:
