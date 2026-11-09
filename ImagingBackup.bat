@@ -18,7 +18,7 @@ set BACKUP_DIR=%~2
 set CLUSTER_CMD=kubectl
 REM kubectl 1.30+ streams exec over WebSockets, which breaks large file transfers; force SPDY
 set KUBECTL_REMOTE_COMMAND_WEBSOCKETS=false
-set OPENSHIFT_CHECK=n
+set OPENSHIFT_CHECK=y
 set BACKUP_CASTDIR=false
 REM Set to false to skip the postgres backup (e.g. when an external postgres instance is used)
 set BACKUP_POSTGRES=true
@@ -310,7 +310,8 @@ if %DL_TRY% GEQ 5 (
     del "%DL_LOCAL%.part"
     exit /b 1
 )
-echo   chunk %DL_NUM%/%DL_CHUNKS% incomplete ^(%DL_GOT% of %DL_EXPECTED% bytes^), retrying...
+echo   chunk %DL_NUM%/%DL_CHUNKS% incomplete ^(%DL_GOT% of %DL_EXPECTED% bytes^), retrying in 15s...
+timeout /t 15 /nobreak >nul
 goto download_chunk_retry
 :download_chunk_ok
 copy /b "%DL_LOCAL%"+"%DL_LOCAL%.part" "%DL_LOCAL%" >nul

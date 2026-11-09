@@ -16,7 +16,7 @@ BACKUP_DIR="$2"
 CLUSTER_CMD="kubectl"
 # kubectl 1.30+ streams exec over WebSockets, which breaks large file transfers; force SPDY
 export KUBECTL_REMOTE_COMMAND_WEBSOCKETS=false
-OPENSHIFT_CHECK="n"
+OPENSHIFT_CHECK="y"
 BACKUP_CASTDIR="false"
 # Set to false to skip the postgres backup (e.g. when an external postgres instance is used)
 BACKUP_POSTGRES="true"
@@ -45,7 +45,8 @@ download_file() {
             $CLUSTER_CMD exec $pod -n $NAMESPACE -- sh -c "dd if='$remote' bs=1M skip=$((i * CHUNK_MB)) count=$CHUNK_MB 2>/dev/null; sleep 5" > "$local_file.part"
             got=$(wc -c < "$local_file.part")
             [ "$got" -eq "$expected" ] && break
-            echo "  chunk $((i + 1))/$chunks incomplete ($got of $expected bytes), retrying..."
+            echo "  chunk $((i + 1))/$chunks incomplete ($got of $expected bytes), retrying in 15s..."
+            sleep 15
         done
         if [ "$got" -ne "$expected" ]; then
             echo "ERROR: chunk $((i + 1))/$chunks of $remote still incomplete after $attempt attempts"
