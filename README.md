@@ -31,6 +31,19 @@ General concepts about CAST Imaging install can be found here: https://doc.casts
   Keys managed by the chart (`app`, `imaging.service`, `haproxy.router.openshift.io/*`, `helm.sh/*`...) cannot be set, and unknown types / components are rejected (helm fails with an explicit message).
   ⚠️ **Note**: the StatefulSets `volumeClaimTemplates` (`castdir` PVCs of console-analysis-node, `neo4jdata` PVC of viewer-neo4j) are immutable: they only receive the PVC labels/annotations when the StatefulSet is created (first install, or when custom metadata is configured for the first time on a new StatefulSet). On `helm upgrade`, their current labels/annotations are read from the cluster (Helm `lookup`) and kept unchanged; existing PVCs can be labelled manually (`oc label pvc ...` / `oc annotate pvc ...`). With **Argo CD**, which renders the chart without cluster access, add to the Application `ignoreDifferences` on `StatefulSet` `.spec.volumeClaimTemplates` with the `RespectIgnoreDifferences=true` sync option, otherwise the upgrade of an existing StatefulSet is rejected as soon as these values change.
   Changing these values restarts the pods and re-runs the init Jobs (their name includes a hash of the values).
+- **Configurable security contexts**: the `securityContext` of all the pods (Deployments, StatefulSets, Jobs) and containers (including init containers) can now be set, e.g. to use for instance a fixed `runAsUser` or `fsGroup` when a policy engine (Gatekeeper, Kyverno...) rejects the IDs assigned by OpenShift from the namespace range (e.g. `fsGroup: 1001270000` outside `1-65535`). New `values.yaml` settings, merged in this order (the last one wins for a given key):
+  - the security context already set by the chart (unchanged when nothing is configured);
+  - `podSecurityContext` / `containerSecurityContext`: all the pods / all the containers;
+  - `componentSecurityContext.<component>.pod` / `.container`: the pods / containers of a component (same component names as `componentMetadata`).
+
+  Sub-keys (`seccompProfile`, `capabilities`...) are merged key by key, and a `null` value removes a key set by the chart (e.g. `runAsNonRoot: null`).
+  ```yaml
+  podSecurityContext:
+    runAsUser: 1001
+    fsGroup: 1001
+  ```
+  ⚠️ **Do not set `runAsGroup`**: when `runAsGroup` is not set, OpenShift runs the containers with the root group (GID 0) as primary group. Some images (like `console-postgres` or `console-analysis-node`) need it, because some of their directories can only be written by the root group. With `runAsGroup`, these containers lose GID 0 and fail. If `runAsGroup` is required, add `supplementalGroups: [0]`.
+  ⚠️ **Note**: the SCC granted to the service account must allow these IDs. The default `restricted-v2` SCC only allows the namespace range: use e.g. `nonroot-v2` (or a custom SCC), or change the namespace annotations `openshift.io/sa.scc.uid-range` / `openshift.io/sa.scc.supplemental-groups`. The pod-level settings (`fsGroup`, `runAsGroup`, `supplementalGroups`) also apply to the containers injected by other operators (e.g. Dynatrace `oneagent` init container).
 
 #### Configuration Changes
 - **New default `GATEWAYSERVICE.SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_TRUSTEDPROXIES: ".*"`**: console-gateway-service 3.6.9 is built on Spring Cloud Gateway 5. It no longer forwards `X-Forwarded-*` headers to the backend services unless `trusted-proxies` is set. Without it, console-authentication-service never learns that the original request was `https://`, so it builds an `http://` OAuth2 login callback URL and the browser is sent back to `http://` after login. The value is a regex matched against the IP of the client calling console-gateway-service (with Routes, the OpenShift router). It can be restricted to the router pod network (e.g. `"10\..*"`).

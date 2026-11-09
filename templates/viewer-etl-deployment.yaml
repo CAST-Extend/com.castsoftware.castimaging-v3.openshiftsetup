@@ -48,6 +48,7 @@ spec:
         imaging.group: viewer
         imaging.service: viewer-etl
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-etl" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -75,6 +76,7 @@ spec:
       initContainers:
         - name: neo4j-and-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-etl" "indent" 10) }}
           imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
           command:
           - /bin/sh
@@ -110,6 +112,7 @@ spec:
 {{- end }}
         - name: init-folders
           image: "{{.Values.ViewerEtlImage.name}}:{{.Values.ViewerEtlImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-etl" "indent" 10) }}
           imagePullPolicy: "{{.Values.ViewerEtlImage.pullPolicy}}"
           command:
           - /bin/sh
@@ -135,6 +138,7 @@ spec:
               value: {{ .Values.ContextUrl.appcontext }}
 {{- end }}
           image: "{{ .Values.ViewerEtlImage.name }}:{{ .Values.ViewerEtlImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-etl" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ViewerEtlImage.pullPolicy }}"
           command: ['sh', '-c', '/opt/imaging/imaging-etl/config/init.sh']
           name: viewer-etl

@@ -51,6 +51,7 @@ spec:
         imaging.group: viewer
         imaging.service: viewer-server
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -79,6 +80,7 @@ spec:
 
         - name: init-folders
           image: "{{.Values.ViewerServiceImage.name}}:{{.Values.ViewerServiceImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 10) }}
           imagePullPolicy: "{{.Values.ViewerServiceImage.pullPolicy}}"
           command:
           - /bin/sh
@@ -99,6 +101,7 @@ spec:
               mountPath: /nginx-volume  
         - name: neo4j-and-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 10) }}
           imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
           command:
           - /bin/sh
@@ -116,6 +119,7 @@ spec:
             echo "viewer-neo4j is up!"
         - name: neo4j-migration
           image: "{{.Values.ViewerNeo4jImage.name}}:{{.Values.ViewerNeo4jImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 10) }}
           imagePullPolicy: "{{.Values.ViewerNeo4jImage.pullPolicy}}"
           env:
             - name: NEO4J_BOLT_ENDPOINT
@@ -174,6 +178,7 @@ spec:
             {{- toYaml .Values.InitContainerResources | nindent 12 }}
       containers:
         - image: "{{ .Values.ViewerServiceImage.name }}:{{ .Values.ViewerServiceImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ViewerServiceImage.pullPolicy }}"
           command: ['sh', '-c', "mkdir -p /run/nginx && exec /opt/imaging/config/init.sh"]
           name: viewer-server

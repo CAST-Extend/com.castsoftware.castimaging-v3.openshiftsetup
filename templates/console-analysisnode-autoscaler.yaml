@@ -181,12 +181,9 @@ spec:
       imagePullSecrets:
         - name: imagepull-sec
 {{- end }}
-      # No runAsUser/runAsGroup: the OpenShift restricted-v2 SCC assigns the UID
+      # No runAsUser/runAsGroup by default: the OpenShift restricted-v2 SCC assigns the UID
       # from the namespace range, like for every other pod of this chart.
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-analysis-node-autoscaler" "restricted" true "indent" 6) }}
       containers:
         - name: autoscaler
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -213,11 +210,7 @@ spec:
               value: "{{ .Values.AnalysisNodeAutoscaling.stuckPodTimeoutSeconds }}"
             - name: DRY_RUN
               value: "{{ .Values.AnalysisNodeAutoscaling.dryRun }}"
-          securityContext:
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-analysis-node-autoscaler" "restricted" true "readOnlyRootFilesystem" true "indent" 10) }}
           resources:
             {{- toYaml .Values.AnalysisNodeAutoscaling.resources | nindent 12 }}
           volumeMounts:

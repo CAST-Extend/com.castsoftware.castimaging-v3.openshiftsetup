@@ -62,6 +62,7 @@ spec:
         imaging.service: extendproxy
         console.service: extendproxy
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "extendproxy" "indent" 6) }}
   {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -103,6 +104,7 @@ spec:
             - name: platform
               value: "linux_x64"
           image: "{{ .Values.ExtendProxyImage.name }}:{{ .Values.ExtendProxyImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "extendproxy" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ExtendProxyImage.pullPolicy }}"
           name: extendproxy
           ports:

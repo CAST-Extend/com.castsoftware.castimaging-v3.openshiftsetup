@@ -54,6 +54,7 @@ spec:
         imaging.group: console
         imaging.service: console-authentication-service
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-authentication-service" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -81,6 +82,7 @@ spec:
       initContainers:
         - name: console-sso-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-authentication-service" "indent" 10) }}
           imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
           command:
           - /bin/sh
@@ -163,6 +165,7 @@ spec:
             - name: LOGS_FOLDER
               value: /opt/cast/imaging-services/logs/auth-service
           image: "{{ .Values.ConsoleAuthenticationServiceImage.name }}:{{ .Values.ConsoleAuthenticationServiceImage.tag }}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-authentication-service" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ConsoleAuthenticationServiceImage.pullPolicy }}"
           name: console-authentication-service
           startupProbe:

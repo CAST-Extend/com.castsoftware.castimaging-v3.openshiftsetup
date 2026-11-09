@@ -58,6 +58,7 @@ spec:
         imaging.group: viewer
         imaging.service: viewer-neo4j
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-neo4j" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -86,6 +87,7 @@ spec:
       initContainers:      
         - name: init-folders
           image: "{{.Values.ViewerNeo4jImage.name}}:{{.Values.ViewerNeo4jImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-neo4j" "indent" 10) }}
           imagePullPolicy: "{{.Values.ViewerNeo4jImage.pullPolicy}}"
           command:
           - /bin/bash
@@ -110,6 +112,7 @@ spec:
       containers:
         - name: viewer-neo4j
           image: "{{.Values.ViewerNeo4jImage.name}}:{{.Values.ViewerNeo4jImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-neo4j" "indent" 10) }}
           imagePullPolicy: "{{.Values.ViewerNeo4jImage.pullPolicy}}"
           command: ['sh', '-c', "/var/lib/neo4j/config/init.sh"]
           env:

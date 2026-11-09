@@ -121,3 +121,62 @@ Called with a dict: "ctx" = root context, "apiVersion" / "statefulset" = Statefu
 {{- include "imaging.renderMetadata" (dict "entries" $labels "field" "labels" "indent" .indent "block" true) -}}
 {{- include "imaging.renderMetadata" (dict "entries" $annotations "field" "annotations" "indent" .indent "block" true) -}}
 {{- end -}}
+
+{{/*
+Security contexts (values: podSecurityContext, containerSecurityContext, componentSecurityContext).
+Merged in this order, the last one wins:
+  1. the security context set by the chart ("restricted" true: runAsNonRoot + seccompProfile RuntimeDefault for
+     a pod, allowPrivilegeEscalation false + drop ALL capabilities for a container, plus seccompProfile
+     RuntimeDefault when "seccomp" is true, plus readOnlyRootFilesystem true when "readOnlyRootFilesystem" is true)
+  2. podSecurityContext / containerSecurityContext
+  3. componentSecurityContext.<component>.pod / .container
+Maps (seccompProfile, seLinuxOptions, capabilities...) are merged key by key, a null value removes the key.
+Nothing is rendered when the result is empty (pods / containers without security context are left unchanged).
+Called with a dict: "ctx" = root context, "component" = componentSecurityContext key, "restricted" / "seccomp" /
+"readOnlyRootFilesystem" = chart defaults (see above), "indent" = indentation of the "securityContext:" key.
+Each line is preceded by a newline, so the include must be written with "{{-".
+*/}}
+{{- define "imaging.podSecurityContext" -}}
+{{- $defaults := dict -}}
+{{- if .restricted -}}
+{{- $defaults = dict "runAsNonRoot" true "seccompProfile" (dict "type" "RuntimeDefault") -}}
+{{- end -}}
+{{- include "imaging.securityContext" (dict "ctx" .ctx "component" .component "field" "pod" "defaults" $defaults "indent" .indent) -}}
+{{- end -}}
+
+{{- define "imaging.containerSecurityContext" -}}
+{{- $defaults := dict -}}
+{{- if .restricted -}}
+{{- $defaults = dict "allowPrivilegeEscalation" false "capabilities" (dict "drop" (list "ALL")) -}}
+{{- end -}}
+{{- if .seccomp -}}
+{{- $_ := set $defaults "seccompProfile" (dict "type" "RuntimeDefault") -}}
+{{- end -}}
+{{- if .readOnlyRootFilesystem -}}
+{{- $_ := set $defaults "readOnlyRootFilesystem" true -}}
+{{- end -}}
+{{- include "imaging.securityContext" (dict "ctx" .ctx "component" .component "field" "container" "defaults" $defaults "indent" .indent) -}}
+{{- end -}}
+
+{{- define "imaging.securityContext" -}}
+{{- $v := .ctx.Values -}}
+{{- $out := .defaults -}}
+{{- $sources := list (index $v (printf "%sSecurityContext" .field)) -}}
+{{- with $v.componentSecurityContext }}{{ with index . $.component }}{{ $sources = append $sources (index . $.field) }}{{ end }}{{ end -}}
+{{- range $src := $sources }}{{ range $k, $val := $src -}}
+{{- if kindIs "invalid" $val -}}
+{{- $_ := unset $out $k -}}
+{{- else if and (kindIs "map" $val) (kindIs "map" (index $out $k)) -}}
+{{- $sub := index $out $k -}}
+{{- range $k2, $val2 := $val -}}
+{{- if kindIs "invalid" $val2 }}{{ $_ := unset $sub $k2 }}{{ else }}{{ $_ := set $sub $k2 (deepCopy $val2) }}{{ end -}}
+{{- end -}}
+{{- else -}}
+{{- $_ := set $out $k (deepCopy $val) -}}
+{{- end -}}
+{{- end }}{{ end -}}
+{{- if $out }}
+{{ "securityContext:" | indent .indent }}
+{{- toYaml $out | nindent (int (add .indent 2)) }}
+{{- end -}}
+{{- end -}}

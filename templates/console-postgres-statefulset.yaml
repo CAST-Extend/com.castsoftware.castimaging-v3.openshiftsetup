@@ -43,10 +43,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.nodeSelectorAppcastimaging | nindent 12 }}
   {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 6) }}
       restartPolicy: Never
   {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
@@ -75,11 +72,7 @@ spec:
             - name: db-creds
               mountPath: /opt/secrets
               readOnly: true 
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 10) }}
       volumes:
         - name: pginit
           configMap:
@@ -146,10 +139,7 @@ spec:
           preferredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
   {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 6) }}
   {{- if .Values.CastStorageService.ssl }}
       initContainers:
         - name: generate-ssl-cert
@@ -173,13 +163,7 @@ spec:
           volumeMounts:
             - name: postgres-ssl
               mountPath: /var/lib/postgresql/ssl
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            seccompProfile:
-              type: RuntimeDefault
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "seccomp" true "indent" 10) }}
           resources:
             {{- toYaml .Values.InitContainerResources | nindent 12 }}
   {{- end }}
@@ -219,11 +203,7 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.ConsolePostgresResources | nindent 12 }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 10) }}
           volumeMounts:
             - mountPath: /var/lib/pgsql/data
               name: db-data
@@ -301,10 +281,7 @@ spec:
       imagePullSecrets:
         - name: imagepull-sec
   {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 6) }}
       containers:
         - name: postgres-init
           image: "{{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag}}"
@@ -325,11 +302,7 @@ spec:
             - name: db-creds
               mountPath: /opt/secrets
               readOnly: true 
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 10) }}
       volumes:
         - name: init-db-custom-pg
           configMap:

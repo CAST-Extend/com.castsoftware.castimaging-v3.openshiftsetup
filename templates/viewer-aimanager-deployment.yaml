@@ -54,6 +54,7 @@ spec:
         imaging.group: viewer
         imaging.service: viewer-aimanager
     spec:
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-aimanager" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -81,6 +82,7 @@ spec:
       initContainers:
         - name: neo4j-and-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-aimanager" "indent" 10) }}
           imagePullPolicy: "{{ .Values.InitUtilImage.pullPolicy }}"
           command:
           - /bin/sh
@@ -98,6 +100,7 @@ spec:
             echo "viewer-neo4j is up!"
         - name: init-folders
           image: "{{.Values.ViewerAiManagerImage.name}}:{{.Values.ViewerAiManagerImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-aimanager" "indent" 10) }}
           imagePullPolicy: "{{.Values.ViewerAiManagerImage.pullPolicy}}"
           command:
           - /bin/sh
@@ -140,6 +143,7 @@ spec:
               value: {{ .Values.ContextUrl.appcontext }}
 {{- end }}
           image: "{{ .Values.ViewerAiManagerImage.name }}:{{ .Values.ViewerAiManagerImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-aimanager" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ViewerAiManagerImage.pullPolicy }}"
           command: ['sh', '-c', "/opt/imaging/open_ai-manager/config/init.sh"]
           name: viewer-aimanager

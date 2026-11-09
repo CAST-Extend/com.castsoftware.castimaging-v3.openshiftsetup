@@ -85,10 +85,7 @@ spec:
           preferredDuringSchedulingIgnoredDuringExecution:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
 {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+{{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-gateway-service" "restricted" true "indent" 6) }}
       initContainers:
       - name: console-control-panel-healthcheck
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -102,11 +99,7 @@ spec:
             sleep 2
           done
           echo "console-control-panel is healthy!"    
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-gateway-service" "restricted" true "indent" 8) }}
       containers:
         - env:
 {{- range $key, $value := .Values.GATEWAYSERVICE }}
@@ -138,6 +131,7 @@ spec:
             - name: LOGS_FOLDER
               value: /opt/cast/imaging-services/logs/gateway
           image: "{{ .Values.ConsoleGatewayServiceImage.name }}:{{ .Values.ConsoleGatewayServiceImage.tag}}"
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-gateway-service" "indent" 10) }}
           imagePullPolicy: "{{ .Values.ConsoleGatewayServiceImage.pullPolicy }}"
           name: console-gateway-service
           startupProbe:
