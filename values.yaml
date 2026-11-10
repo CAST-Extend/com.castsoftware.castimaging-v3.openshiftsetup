@@ -83,14 +83,29 @@ CastStorageService:
 CustomPostgres:
   enable: false     # Existing external server will be used
   host: mypostgreshostname
-  adminlogin: postgres     # Admin user used by the init Job to create the operator / keycloak users and the
-                           #   postgres / keycloak databases (needs CREATEROLE and CREATEDB).
-                           #   Store its password in PostgresDbPassword variable
+  adminlogin: postgres     # Admin user used by the init Job to create the operator / keycloak users, the
+                           #   DB_DATABASE / KEYCLOAK_DB databases and the KEYCLOAK_SCHEMA schema
+                           #   (needs CREATEROLE and CREATEDB). Store its password in PostgresDbPassword variable
   admindb: postgres        # Existing database the init Job connects to with adminlogin. Default: postgres.
                            #   Set it when "postgres" does not exist or is not accessible to adminlogin
-                           #   (e.g. managed services: "ibmclouddb" on IBM Cloud Databases). The "postgres"
-                           #   database used by Imaging is then created by the init Job if it does not exist.
+                           #   (e.g. managed services: "ibmclouddb" on IBM Cloud Databases).
   port: 2285
+#
+# Database / schema names (embedded and external postgres, same variables as the docker-compose installation)
+#   DB_DATABASE:     Imaging database (control-panel, auth-service, analysis data)
+#   KEYCLOAK_DB:     Keycloak (console-sso-service) database. Can be the same as DB_DATABASE.
+#   KEYCLOAK_SCHEMA: Keycloak schema in KEYCLOAK_DB
+#   The init Job creates the databases and the schema when they do not exist.
+#   Lowercase letters, digits and "_" only, starting with a letter or "_" (max 63 characters).
+#   WARNING: changing these values after the initial deployment is not supported (no data migration).
+#   Example with an external server where the "postgres" database cannot be used (e.g. IBM Cloud Databases),
+#   with Imaging and Keycloak in a single database, as with the docker-compose installation:
+#     DB_DATABASE: imaging
+#     KEYCLOAK_DB: imaging
+#     KEYCLOAK_SCHEMA: keycloak
+DB_DATABASE: postgres
+KEYCLOAK_DB: keycloak
+KEYCLOAK_SCHEMA: public
 
 #
 # Secrets - 2 options:

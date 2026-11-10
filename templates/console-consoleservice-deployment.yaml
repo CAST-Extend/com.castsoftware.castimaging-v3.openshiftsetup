@@ -105,13 +105,13 @@ spec:
         - |
           echo "Running context URL updates..."
 {{- if .Values.CustomPostgres.enable }}
-          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d postgres -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
-          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d keycloak -f /home/imaging/sql/contexturl-keycloak-update-script.sql
-          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d postgres -f /home/imaging/sql/license-extend-update-script.sql
+          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
+          {{ if ne .Values.KEYCLOAK_SCHEMA "public" }}PGOPTIONS="-c search_path={{ .Values.KEYCLOAK_SCHEMA }}" {{ end }}psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d {{ .Values.KEYCLOAK_DB }} -f /home/imaging/sql/contexturl-keycloak-update-script.sql
+          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/license-extend-update-script.sql
 {{- else }}
-          psql -h console-postgres -p 2285 -U operator -d postgres -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
-          psql -h console-postgres -p 2285 -U operator -d keycloak -f /home/imaging/sql/contexturl-keycloak-update-script.sql
-          psql -h console-postgres -p 2285 -U operator -d postgres -f /home/imaging/sql/license-extend-update-script.sql
+          psql -h console-postgres -p 2285 -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
+          {{ if ne .Values.KEYCLOAK_SCHEMA "public" }}PGOPTIONS="-c search_path={{ .Values.KEYCLOAK_SCHEMA }}" {{ end }}psql -h console-postgres -p 2285 -U operator -d {{ .Values.KEYCLOAK_DB }} -f /home/imaging/sql/contexturl-keycloak-update-script.sql
+          psql -h console-postgres -p 2285 -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/license-extend-update-script.sql
 {{- end }}
           echo "Done."
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 8) }}

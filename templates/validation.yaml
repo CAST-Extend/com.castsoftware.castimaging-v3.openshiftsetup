@@ -12,6 +12,15 @@
   {{- fail "ERROR: CustomPostgres.adminlogin must be set when CustomPostgres.enable is true." }}
 {{- end }}
 
+{{/* DB_DATABASE, KEYCLOAK_DB, KEYCLOAK_SCHEMA (and CustomPostgres.admindb): valid lowercase PostgreSQL identifiers */}}
+{{- $dbNames := dict "DB_DATABASE" .Values.DB_DATABASE "KEYCLOAK_DB" .Values.KEYCLOAK_DB "KEYCLOAK_SCHEMA" .Values.KEYCLOAK_SCHEMA }}
+{{- if .Values.CustomPostgres.enable }}{{ $_ := set $dbNames "CustomPostgres.admindb" (.Values.CustomPostgres.admindb | default "postgres") }}{{ end }}
+{{- range $k, $v := $dbNames }}
+  {{- if not (and (kindIs "string" $v) (regexMatch "^[a-z_][a-z0-9_]{0,62}$" $v)) }}
+    {{- fail (printf "ERROR: %s %q is not a valid name: lowercase letters, digits and \"_\" only, starting with a letter or \"_\", 63 characters max." $k (toString $v)) }}
+  {{- end }}
+{{- end }}
+
 {{/* componentPriorityClassName keys must be valid components */}}
 {{- $components := list "console-analysis-node" "console-analysis-node-autoscaler" "console-authentication-service" "console-control-panel" "console-dashboards" "console-gateway-service" "console-postgres" "console-service" "console-sso-service" "extendproxy" "mcp-server" "viewer-aimanager" "viewer-api" "viewer-etl" "viewer-neo4j" "viewer-server" }}
 {{- range $k, $_ := .Values.componentPriorityClassName }}

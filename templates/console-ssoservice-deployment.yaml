@@ -113,13 +113,13 @@ spec:
 {{- end }}
 {{- if .Values.CustomPostgres.enable }}
             - name: KC_DB_URL
-              value: jdbc:postgresql://{{ .Values.CustomPostgres.host }}:{{ .Values.CustomPostgres.port }}/keycloak
+              value: jdbc:postgresql://{{ .Values.CustomPostgres.host }}:{{ .Values.CustomPostgres.port }}/{{ .Values.KEYCLOAK_DB }}
 {{- else }}
             - name: KC_DB_URL
-              value: jdbc:postgresql://console-postgres:2285/keycloak
+              value: jdbc:postgresql://console-postgres:2285/{{ .Values.KEYCLOAK_DB }}
 {{- end }} 
             - name: KC_DB_SCHEMA
-              value: public
+              value: {{ .Values.KEYCLOAK_SCHEMA | quote }}
             - name: KC_DB_USERNAME
               value: operator
             - name: KC_DB_PASSWORD

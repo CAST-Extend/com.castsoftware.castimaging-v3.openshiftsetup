@@ -169,7 +169,7 @@ spec:
 {{- end }}
             echo "Running postgres upgrade..."
             PGPASSWORD="$OPERATOR_PASSWORD"
-            psql -h "$PG_HOST" -p "$PG_PORT" -U operator -d postgres -f /home/imaging/sql/analysisnode-upgrade-script.sql
+            psql -h "$PG_HOST" -p "$PG_PORT" -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/analysisnode-upgrade-script.sql
           volumeMounts:
             - name: analysisnode-upgrade-script
               mountPath: /home/imaging/sql/analysisnode-upgrade-script.sql

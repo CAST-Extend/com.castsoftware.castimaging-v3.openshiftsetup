@@ -113,11 +113,11 @@ spec:
 {{- end }}
           echo "Running context URL updates..."
 {{- if .Values.CustomPostgres.enable }}
-          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d postgres -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
-          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d keycloak -f /home/imaging/sql/contexturl-keycloak-update-script.sql
+          psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
+          {{ if ne .Values.KEYCLOAK_SCHEMA "public" }}PGOPTIONS="-c search_path={{ .Values.KEYCLOAK_SCHEMA }}" {{ end }}psql -h {{ .Values.CustomPostgres.host }} -p {{ .Values.CustomPostgres.port }} -U operator -d {{ .Values.KEYCLOAK_DB }} -f /home/imaging/sql/contexturl-keycloak-update-script.sql
 {{- else }}
-          psql -h console-postgres -p 2285 -U operator -d postgres -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
-          psql -h console-postgres -p 2285 -U operator -d keycloak -f /home/imaging/sql/contexturl-keycloak-update-script.sql
+          psql -h console-postgres -p 2285 -U operator -d {{ .Values.DB_DATABASE }} -f /home/imaging/sql/contexturl-controlpanel-update-script.sql
+          {{ if ne .Values.KEYCLOAK_SCHEMA "public" }}PGOPTIONS="-c search_path={{ .Values.KEYCLOAK_SCHEMA }}" {{ end }}psql -h console-postgres -p 2285 -U operator -d {{ .Values.KEYCLOAK_DB }} -f /home/imaging/sql/contexturl-keycloak-update-script.sql
 {{- end }}
           echo "Done."
         volumeMounts:
@@ -162,7 +162,7 @@ spec:
             - name: DB_USERNAME
               value: operator
             - name: DB_DATABASE
-              value: postgres
+              value: {{ .Values.DB_DATABASE | quote }}
             - name: DB_ENCRYPTED_PASSWORD
               valueFrom:
                 secretKeyRef:
