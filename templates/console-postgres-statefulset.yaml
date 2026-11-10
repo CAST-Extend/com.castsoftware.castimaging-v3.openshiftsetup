@@ -44,6 +44,7 @@ spec:
             {{- toYaml .Values.nodeSelectorAppcastimaging | nindent 12 }}
   {{- end }}
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-postgres" "indent" 6) }}
       restartPolicy: Never
   {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
@@ -66,6 +67,11 @@ spec:
               value: "postgres"
           command: ["/bin/bash", "-c", "/tmp/init-db.sh"]
           volumeMounts:
+{{- if .Values.ReadOnlyRootFilesystem }}
+            # bash writes the here-document of init-db.sh in a temp file
+            - name: tmp
+              mountPath: /tmp
+{{- end }}
             - name: pginit
               mountPath: "/tmp/init-db.sh"               
               subPath: init-db.sh
@@ -81,6 +87,10 @@ spec:
         - name: db-creds
           secret:
             secretName: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -140,8 +150,31 @@ spec:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
   {{- end }}
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 6) }}
-  {{- if .Values.CastStorageService.ssl }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-postgres" "indent" 6) }}
+  {{- if or .Values.CastStorageService.ssl .Values.ReadOnlyRootFilesystem }}
       initContainers:
+  {{- end }}
+  {{- if .Values.ReadOnlyRootFilesystem }}
+        # Read-only root filesystem: the RHEL postgresql image writes in its HOME (/var/lib/pgsql: passwd,
+        # generated configuration...) at startup. Copy it (except data, on the PVC) to a writable emptyDir.
+        - name: init-folders
+          image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag }}"
+          imagePullPolicy: "{{ .Values.ConsolePostgresImage.pullPolicy }}"
+          command:
+            - bash
+            - -c
+            - |
+              rm -rf /pgsql-home-volume/* || true
+              cd /var/lib/pgsql && find . -mindepth 1 -maxdepth 1 ! -name data -exec cp -a {} /pgsql-home-volume/ \; 2>/dev/null || true
+              mkdir -p /pgsql-home-volume/data
+          volumeMounts:
+            - name: pgsql-home
+              mountPath: /pgsql-home-volume
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 10) }}
+          resources:
+            {{- toYaml .Values.InitContainerResources | nindent 12 }}
+  {{- end }}
+  {{- if .Values.CastStorageService.ssl }}
         - name: generate-ssl-cert
           image: "{{ .Values.ConsolePostgresImage.name }}:{{ .Values.ConsolePostgresImage.tag }}"
           imagePullPolicy: "{{ .Values.ConsolePostgresImage.pullPolicy }}"
@@ -205,6 +238,11 @@ spec:
             {{- toYaml .Values.ConsolePostgresResources | nindent 12 }}
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 10) }}
           volumeMounts:
+  {{- if .Values.ReadOnlyRootFilesystem }}
+            # Mounted first: the db-data mount below is nested in /var/lib/pgsql
+            - name: pgsql-home
+              mountPath: /var/lib/pgsql
+  {{- end }}
             - mountPath: /var/lib/pgsql/data
               name: db-data
             - name: pgconf
@@ -220,6 +258,15 @@ spec:
               mountPath: /etc/postgresql/pg_hba.conf
               subPath: pg_hba.conf
               readOnly: true
+  {{- end }}
+  {{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+            # RHEL postgresql image: socket and lock file directory (hidden by the /var/run emptyDir above)
+            - name: pgsql-run
+              mountPath: /var/run/postgresql
   {{- end }}
       volumes:
         - name: db-data
@@ -243,6 +290,16 @@ spec:
         - name: pghbaconf
           configMap:
             name: console-v3-pghbaconf
+  {{- end }}
+  {{- if .Values.ReadOnlyRootFilesystem }}
+        - name: pgsql-home
+          emptyDir: {}
+        - name: pgsql-run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
   {{- end }}
 {{- end }}
 ---
@@ -282,6 +339,7 @@ spec:
         - name: imagepull-sec
   {{- end }}
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-postgres" "indent" 6) }}
       containers:
         - name: postgres-init
           image: "{{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag}}"
@@ -291,11 +349,16 @@ spec:
             - name: PGPORT
               value: "{{ .Values.CustomPostgres.port }}"             
             - name: POSTGRES_USER
-              value: postgres
+              value: "{{ .Values.CustomPostgres.adminlogin }}"
             - name: POSTGRES_DB
-              value: postgres
+              value: "{{ .Values.CustomPostgres.admindb | default "postgres" }}"
           command: ["/bin/bash", "-c", "/tmp/init-db-custom-pg.sh"]
           volumeMounts:
+{{- if .Values.ReadOnlyRootFilesystem }}
+            # bash writes the here-document of init-db-custom-pg.sh in a temp file
+            - name: tmp
+              mountPath: /tmp
+{{- end }}
             - name: init-db-custom-pg
               mountPath: "/tmp/init-db-custom-pg.sh"               
               subPath: init-db-custom-pg.sh 
@@ -303,6 +366,8 @@ spec:
               mountPath: /opt/secrets
               readOnly: true 
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-postgres" "restricted" true "indent" 10) }}
+          resources:
+            {{- toYaml .Values.InitContainerResources | nindent 12 }}
       volumes:
         - name: init-db-custom-pg
           configMap:
@@ -311,4 +376,8 @@ spec:
         - name: db-creds
           secret:
             secretName: {{ .Values.existingSecret | default "imaging-pwd-sec" }}
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+{{- end }}
 {{- end }}

@@ -55,6 +55,7 @@ spec:
         imaging.service: viewer-aimanager
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-aimanager" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "viewer-aimanager" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -98,6 +99,11 @@ spec:
               sleep 2
             done
             echo "viewer-neo4j is up!"
+{{- if .Values.ReadOnlyRootFilesystem }}
+          volumeMounts:
+            - name: open-ai-dir
+              mountPath: /opt/imaging/open_ai-manager
+{{- end }}
         - name: init-folders
           image: "{{.Values.ViewerAiManagerImage.name}}:{{.Values.ViewerAiManagerImage.tag}}"
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-aimanager" "indent" 10) }}
@@ -176,6 +182,12 @@ spec:
             - name: logdir
               mountPath: /opt/imaging/open_ai-manager/logs
               readOnly: false
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+{{- end }}
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
 {{- end }}
@@ -189,4 +201,10 @@ spec:
             claimName: pvc-imagingviewer-v3-aimanager-logs
         - name: open-ai-dir
           emptyDir: {}
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+{{- end }}
 {{- end }}

@@ -76,6 +76,7 @@ spec:
   {{- end }}
       # UID/GID and fsGroup are assigned by the OpenShift SCC (restricted-v2), not by the chart
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "mcp-server" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "mcp-server" "indent" 6) }}
       initContainers:
         - name: neo4j-and-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}

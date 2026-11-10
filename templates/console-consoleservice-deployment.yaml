@@ -73,6 +73,7 @@ spec:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
 {{- end }}
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-service" "indent" 6) }}
       initContainers:
       - name: console-control-panel-healthcheck
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -175,6 +176,12 @@ spec:
               name: shared-datadir
             - mountPath: /opt/cast/imaging-services/logs/console
               name: consoleservice-logs
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+{{- end }}
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-service" "restricted" true "indent" 10) }}
       volumes:
         - name: shared-datadir
@@ -192,6 +199,12 @@ spec:
         - name: license-extend-update-script
           configMap:
             name: license-extend-update-script
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+{{- end }}
       restartPolicy: Always
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}

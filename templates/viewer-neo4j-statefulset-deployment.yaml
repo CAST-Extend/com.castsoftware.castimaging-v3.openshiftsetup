@@ -59,6 +59,7 @@ spec:
         imaging.service: viewer-neo4j
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-neo4j" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "viewer-neo4j" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -109,6 +110,24 @@ spec:
             - name: neo4jdata
               mountPath: /neo4j-volume
               subPathExpr: neo4jdata
+{{- if .Values.ReadOnlyRootFilesystem }}
+        # Read-only root filesystem: copy /var (written at startup) to a writable emptyDir
+        - name: init-var-folders
+          image: "{{ .Values.ViewerNeo4jImage.name }}:{{ .Values.ViewerNeo4jImage.tag }}"
+          imagePullPolicy: "{{ .Values.ViewerNeo4jImage.pullPolicy }}"
+          command:
+          - /bin/bash
+          - -c
+          - |
+            rm -rf /neo4j-var-volume/* || true
+            cd /var && find . -mindepth 1 -maxdepth 1 ! -name empty -exec cp -a {} /neo4j-var-volume/ \; 2>/dev/null || true
+          volumeMounts:
+            - name: neo4j-var-dir
+              mountPath: /neo4j-var-volume
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-neo4j" "indent" 10) }}
+          resources:
+            {{- toYaml .Values.InitContainerResources | nindent 12 }}
+{{- end }}
       containers:
         - name: viewer-neo4j
           image: "{{.Values.ViewerNeo4jImage.name}}:{{.Values.ViewerNeo4jImage.tag}}"
@@ -170,6 +189,12 @@ spec:
           resources:
             {{- toYaml .Values.ViewerNeo4jResources | nindent 12 }}
           volumeMounts:
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: neo4j-var-dir
+              mountPath: /var
+            - name: tmp
+              mountPath: /tmp
+{{- end }}
             - name: neo4jdata
               mountPath: /var/lib/neo4j/logs
               subPath: logs
@@ -185,7 +210,14 @@ spec:
 {{- if .Values.UseImagePullSecrets }}              
       imagePullSecrets:
         - name: imagepull-sec
-{{- end }}        
+{{- end }}
+{{- if .Values.ReadOnlyRootFilesystem }}
+      volumes:
+        - name: neo4j-var-dir
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+{{- end }}
   volumeClaimTemplates:
     - metadata:
         {{- include "imaging.volumeClaimTemplateMetadata" (dict "ctx" $ "apiVersion" "apps/v1" "statefulset" "viewer-neo4j-core" "claim" "neo4jdata" "component" "viewer-neo4j" "indent" 8) }}

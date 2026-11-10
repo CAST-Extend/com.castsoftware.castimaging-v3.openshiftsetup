@@ -49,6 +49,7 @@ spec:
         imaging.service: console-sso-service
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-sso-service" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -73,6 +74,24 @@ spec:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
 {{- end }}
       initContainers:
+{{- if .Values.ReadOnlyRootFilesystem }}
+        # Read-only root filesystem: copy /opt/keycloak (written at startup) to a writable emptyDir
+        - name: init-folders
+          image: "{{ .Values.ConsoleSSOServiceImage.name }}:{{ .Values.ConsoleSSOServiceImage.tag }}"
+          imagePullPolicy: "{{ .Values.ConsoleSSOServiceImage.pullPolicy }}"
+          command:
+          - /bin/sh
+          - -c
+          - |
+            rm -rf /keycloak-volume/*
+            cp -r /opt/keycloak/* /keycloak-volume/ || true
+          volumeMounts:
+            - name: keycloak-dir
+              mountPath: /keycloak-volume
+{{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 10) }}
+          resources:
+            {{- toYaml .Values.InitContainerResources | nindent 12 }}
+{{- end }}
         - name: wait-for-postgres
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "console-sso-service" "indent" 10) }}
@@ -184,11 +203,27 @@ spec:
           volumeMounts:
             - mountPath: /opt/cast/imaging-services/logs/sso
               name: ssoservice-logs
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: keycloak-dir
+              mountPath: /opt/keycloak
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+{{- end }}
       restartPolicy: Always
       volumes:
         - name: ssoservice-logs
           persistentVolumeClaim:
             claimName: pvc-ssoservice-logs
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: keycloak-dir
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+{{- end }}
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
 {{- end }}
@@ -214,6 +249,7 @@ spec:
         sidecar.istio.io/inject: "false"
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-sso-service" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-sso-service" "indent" 6) }}
       restartPolicy: Never
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}

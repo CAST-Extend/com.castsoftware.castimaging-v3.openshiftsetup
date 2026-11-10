@@ -52,6 +52,7 @@ spec:
         imaging.service: viewer-server
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "viewer-server" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -92,13 +93,21 @@ spec:
             cp -r /opt/imaging/imaging-service/* /server-volume/ || true
             cp -r /opt/imaging/config/* /server-config-volume/ || true
             cp -r /etc/nginx/* /nginx-volume/ || true
+{{- if .Values.ReadOnlyRootFilesystem }}
+            rm -rf /web-volume/*
+            cp -r /opt/imaging/web/* /web-volume/ || true
+{{- end }}
           volumeMounts:
             - name: server-data
-              mountPath: /server-volume 
+              mountPath: /server-volume
             - name: server-config
-              mountPath: /server-config-volume     
+              mountPath: /server-config-volume
             - name: nginx
-              mountPath: /nginx-volume  
+              mountPath: /nginx-volume
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: web
+              mountPath: /web-volume
+{{- end }}
         - name: neo4j-and-control-panel-healthcheck
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
 {{- include "imaging.containerSecurityContext" (dict "ctx" $ "component" "viewer-server" "indent" 10) }}
@@ -174,6 +183,11 @@ spec:
             echo "-------------------------------------------------"
 {{- end }}
             echo "Done."
+{{- if .Values.ReadOnlyRootFilesystem }}
+          volumeMounts:
+            - name: migration-tmp
+              mountPath: /tmp
+{{- end }}
           resources:
             {{- toYaml .Values.InitContainerResources | nindent 12 }}
       containers:
@@ -255,6 +269,14 @@ spec:
             - name: servernginxconf
               mountPath: /opt/imaging/config/nginx/conf/nginx.conf
               subPath: nginx.conf
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: web
+              mountPath: /opt/imaging/web
+            - name: tmp
+              mountPath: /tmp
+            - name: var-tmp
+              mountPath: /var/tmp
+{{- end }}
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
 {{- end }}
@@ -284,4 +306,14 @@ spec:
           emptyDir: {}
         - name: nginx-run
           emptyDir: {}
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: web
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: var-tmp
+          emptyDir: {}
+        - name: migration-tmp
+          emptyDir: {}
+{{- end }}
 {{- end }}

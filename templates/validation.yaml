@@ -1,0 +1,21 @@
+{{- /*
+  Checks the consistency of the values. Renders nothing.
+*/ -}}
+
+{{/* CastStorageService.enable or CustomPostgres.enable, not both */}}
+{{- if and .Values.CastStorageService.enable .Values.CustomPostgres.enable }}
+  {{- fail "ERROR: CastStorageService.enable and CustomPostgres.enable cannot both be set to true." }}
+{{- end }}
+
+{{/* CustomPostgres.adminlogin is required by the custom-postgres-init-job */}}
+{{- if and .Values.CustomPostgres.enable (not .Values.CustomPostgres.adminlogin) }}
+  {{- fail "ERROR: CustomPostgres.adminlogin must be set when CustomPostgres.enable is true." }}
+{{- end }}
+
+{{/* componentPriorityClassName keys must be valid components */}}
+{{- $components := list "console-analysis-node" "console-analysis-node-autoscaler" "console-authentication-service" "console-control-panel" "console-dashboards" "console-gateway-service" "console-postgres" "console-service" "console-sso-service" "extendproxy" "mcp-server" "viewer-aimanager" "viewer-api" "viewer-etl" "viewer-neo4j" "viewer-server" }}
+{{- range $k, $_ := .Values.componentPriorityClassName }}
+  {{- if not (has $k $components) }}
+    {{- fail (printf "ERROR: componentPriorityClassName.%s is not a valid component (valid components: %s)." $k (join ", " $components)) }}
+  {{- end }}
+{{- end }}

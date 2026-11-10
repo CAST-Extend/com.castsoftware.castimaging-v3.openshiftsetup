@@ -184,6 +184,7 @@ spec:
       # No runAsUser/runAsGroup by default: the OpenShift restricted-v2 SCC assigns the UID
       # from the namespace range, like for every other pod of this chart.
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-analysis-node-autoscaler" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-analysis-node-autoscaler" "indent" 6) }}
       containers:
         - name: autoscaler
           image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}

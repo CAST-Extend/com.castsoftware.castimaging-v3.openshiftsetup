@@ -49,6 +49,7 @@ spec:
         imaging.service: viewer-api
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "viewer-api" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "viewer-api" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -184,12 +185,24 @@ spec:
               readOnly: false
             - name: api-config-dir
               mountPath: /opt/imaging/imaging-api/config
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+{{- end }}
       volumes:
         - name: logdir
           persistentVolumeClaim:
             claimName: pvc-imagingviewer-v3-api-logs
         - name: api-config-dir
           emptyDir: {}
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+{{- end }}
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
 {{- end }}

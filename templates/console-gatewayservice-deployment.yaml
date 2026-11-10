@@ -86,6 +86,7 @@ spec:
             {{- toYaml .Values.podAffinityGroupViewer | nindent 12 }}
 {{- end }}
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-gateway-service" "restricted" true "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-gateway-service" "indent" 6) }}
       initContainers:
       - name: console-control-panel-healthcheck
         image: {{ .Values.InitUtilImage.name }}:{{ .Values.InitUtilImage.tag }}
@@ -160,11 +161,23 @@ spec:
           volumeMounts:
             - mountPath: /opt/cast/imaging-services/logs/gateway
               name: gatewayservice-logs
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+{{- end }}
       restartPolicy: Always
       volumes:
         - name: gatewayservice-logs
           persistentVolumeClaim:
             claimName: pvc-gatewayservice-logs
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+{{- end }}
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
 {{- end }}

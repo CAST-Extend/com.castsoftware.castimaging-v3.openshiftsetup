@@ -197,7 +197,7 @@ data:
       echo "PostgreSQL is not ready yet, waiting..."
       sleep 1
     done
-    echo "PostgreSQL is ready, running initialization..."
+    echo "PostgreSQL is ready, running initialization (connected to database $POSTGRES_DB as $POSTGRES_USER)..."
     psql -v ON_ERROR_STOP=1 -h $PGHOST -p $PGPORT -U $POSTGRES_USER -d $POSTGRES_DB <<-EOSQL
       -- Create users only if they don't exist
       DO \$\$
@@ -212,9 +212,10 @@ data:
       END
       \$\$;
 
-      -- Create databases
+      -- Create databases ($POSTGRES_DB = CustomPostgres.admindb, the database used for this connection:
+      -- the "postgres" database used by Imaging is created when it does not exist yet)
       SELECT 'CREATE DATABASE postgres'
-      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$POSTGRES_DB')\gexec
+      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'postgres')\gexec
 
       SELECT 'CREATE DATABASE keycloak'
       WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak')\gexec
@@ -223,6 +224,9 @@ data:
       GRANT ALL PRIVILEGES ON DATABASE postgres TO operator;
       GRANT ALL PRIVILEGES ON DATABASE keycloak TO operator;
       GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+      \c keycloak
+      GRANT ALL ON SCHEMA public TO operator;
+      GRANT ALL ON SCHEMA public TO keycloak;
     EOSQL
     echo "Exiting database initialization script."
 

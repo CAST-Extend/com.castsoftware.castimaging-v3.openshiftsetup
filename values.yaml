@@ -83,7 +83,13 @@ CastStorageService:
 CustomPostgres:
   enable: false     # Existing external server will be used
   host: mypostgreshostname
-  adminlogin: postgres     # Store password in PostgresDbPassword variable
+  adminlogin: postgres     # Admin user used by the init Job to create the operator / keycloak users and the
+                           #   postgres / keycloak databases (needs CREATEROLE and CREATEDB).
+                           #   Store its password in PostgresDbPassword variable
+  admindb: postgres        # Existing database the init Job connects to with adminlogin. Default: postgres.
+                           #   Set it when "postgres" does not exist or is not accessible to adminlogin
+                           #   (e.g. managed services: "ibmclouddb" on IBM Cloud Databases). The "postgres"
+                           #   database used by Imaging is then created by the init Job if it does not exist.
   port: 2285
 
 #
@@ -314,6 +320,31 @@ componentMetadata: {}
 podSecurityContext: {}
 containerSecurityContext: {}
 componentSecurityContext: {}
+#
+# OPTIONAL - Read-only root filesystem
+#   Set to true when a security policy (SCC, Gatekeeper / Kyverno...) requires readOnlyRootFilesystem: true.
+#   All the containers and init containers then get readOnlyRootFilesystem: true, and the directories written by
+#   the applications (/tmp, /var/run, application folders...) are replaced by emptyDir volumes (filled by an
+#   "init-folders" init container when the image content is needed: console-sso-service, console-analysis-node,
+#   viewer-server, viewer-neo4j). The paths are the same as with RestrictedSecurityMode in the Kubernetes chart.
+#   It can be disabled for a given component with componentSecurityContext.<component>.container.readOnlyRootFilesystem: false
+#   (the emptyDir volumes are kept).
+#   Changing this value restarts the pods, and re-runs the init Jobs.
+ReadOnlyRootFilesystem: false
+
+#
+# OPTIONAL - Pod priority (spec.priorityClassName of the pods: Deployments, StatefulSets, Jobs)
+#   The PriorityClass must already exist in the cluster (cluster-scoped resource, not created by the chart).
+#     priorityClassName: priority class of all the pods (empty = no priorityClassName, cluster default)
+#     componentPriorityClassName.<component>: priority class of the pods of a component, overrides priorityClassName
+#        (components: see componentMetadata above)
+#   Example:
+#     priorityClassName: castimaging-normal
+#     componentPriorityClassName:
+#       console-postgres: castimaging-high
+#       viewer-neo4j: castimaging-high
+priorityClassName: ""
+componentPriorityClassName: {}
 
 ####################################################################################
 

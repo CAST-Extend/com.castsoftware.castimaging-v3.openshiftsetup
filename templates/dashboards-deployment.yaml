@@ -49,6 +49,7 @@ spec:
         imaging.service: console-dashboards
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "console-dashboards" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "console-dashboards" "indent" 6) }}
 {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -162,6 +163,12 @@ spec:
               mountPath: /etc/ssl/certs-postgres
               readOnly: true
 {{- end }}
+{{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+{{- end }}
       restartPolicy: Always
 {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
@@ -180,5 +187,11 @@ spec:
             secretName: ssl-certs
             defaultMode: 0644
         - name: postgres-ssl-files
+          emptyDir: {}
+{{- end }}
+{{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
           emptyDir: {}
 {{- end }}

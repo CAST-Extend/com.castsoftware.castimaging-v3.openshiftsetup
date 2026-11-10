@@ -63,6 +63,7 @@ spec:
         console.service: extendproxy
     spec:
 {{- include "imaging.podSecurityContext" (dict "ctx" $ "component" "extendproxy" "indent" 6) }}
+{{- include "imaging.priorityClassName" (dict "ctx" $ "component" "extendproxy" "indent" 6) }}
   {{- if .Values.EnforceNodeAffinity }}
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
@@ -115,6 +116,12 @@ spec:
           volumeMounts:
             - name: extendproxy
               mountPath: /opt/cast_extend_proxy/data
+  {{- if .Values.ReadOnlyRootFilesystem }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+  {{- end }}
       restartPolicy: Always
   {{- if .Values.ServiceAccountName }}
       serviceAccountName: {{ .Values.ServiceAccountName }}
@@ -127,4 +134,10 @@ spec:
         - name: extendproxy
           persistentVolumeClaim:
             claimName: pvc-extendproxy-data
+  {{- if .Values.ReadOnlyRootFilesystem }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+  {{- end }}
 {{- end }}

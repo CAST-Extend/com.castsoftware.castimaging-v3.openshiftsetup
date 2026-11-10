@@ -127,7 +127,8 @@ Security contexts (values: podSecurityContext, containerSecurityContext, compone
 Merged in this order, the last one wins:
   1. the security context set by the chart ("restricted" true: runAsNonRoot + seccompProfile RuntimeDefault for
      a pod, allowPrivilegeEscalation false + drop ALL capabilities for a container, plus seccompProfile
-     RuntimeDefault when "seccomp" is true, plus readOnlyRootFilesystem true when "readOnlyRootFilesystem" is true)
+     RuntimeDefault when "seccomp" is true, plus readOnlyRootFilesystem true when "readOnlyRootFilesystem" is true
+     or when the ReadOnlyRootFilesystem value is true: all the containers then get a read-only root filesystem)
   2. podSecurityContext / containerSecurityContext
   3. componentSecurityContext.<component>.pod / .container
 Maps (seccompProfile, seLinuxOptions, capabilities...) are merged key by key, a null value removes the key.
@@ -152,10 +153,26 @@ Each line is preceded by a newline, so the include must be written with "{{-".
 {{- if .seccomp -}}
 {{- $_ := set $defaults "seccompProfile" (dict "type" "RuntimeDefault") -}}
 {{- end -}}
-{{- if .readOnlyRootFilesystem -}}
+{{- if or .readOnlyRootFilesystem .ctx.Values.ReadOnlyRootFilesystem -}}
 {{- $_ := set $defaults "readOnlyRootFilesystem" true -}}
 {{- end -}}
 {{- include "imaging.securityContext" (dict "ctx" .ctx "component" .component "field" "container" "defaults" $defaults "indent" .indent) -}}
+{{- end -}}
+
+{{/*
+Pod priority class (values: priorityClassName, componentPriorityClassName).
+componentPriorityClassName.<component> wins over priorityClassName. Nothing is rendered when both are empty.
+Called with a dict: "ctx" = root context, "component" = componentPriorityClassName key, "indent" = indentation
+of the "priorityClassName:" key (pod spec level).
+Each line is preceded by a newline, so the include must be written with "{{-".
+*/}}
+{{- define "imaging.priorityClassName" -}}
+{{- $v := .ctx.Values -}}
+{{- $name := $v.priorityClassName -}}
+{{- with $v.componentPriorityClassName }}{{ with index . $.component }}{{ $name = . }}{{ end }}{{ end -}}
+{{- with $name }}
+{{ printf "priorityClassName: %s" (. | quote) | indent $.indent }}
+{{- end -}}
 {{- end -}}
 
 {{- define "imaging.securityContext" -}}
