@@ -24,7 +24,6 @@ type: Opaque
 data:
   postgres-db-password: {{ .Values.PostgresDbPassword | default "cG9zdGdyZXM=" }}
   operator-db-password: {{ .Values.OperatorDbPassword | default "Q2FzdEFJUA==" }}
-  keycloak-db-password: {{ .Values.KeycloakDbPassword | default "a2V5Y2xvYWs=" }}
   keycloak-admin-password: {{ .Values.KeycloakAdminPassword | default "YWRtaW4=" }}
   neo4j-password: {{ .Values.Neo4jPassword | default "aW1hZ2luZw==" }}
   operator-db-password-crypted2: {{ .Values.OperatorDbPasswordCrypted2 | b64enc }}

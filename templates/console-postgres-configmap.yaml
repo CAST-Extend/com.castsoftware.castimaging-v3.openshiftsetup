@@ -136,10 +136,8 @@ data:
     set -e
 
     export OPERATOR_PASSWORD=$(cat /opt/secrets/operator-db-password )
-    export KEYCLOAK_PASSWORD=$(cat /opt/secrets/keycloak-db-password)     
     export PGPASSWORD=$(cat /opt/secrets/postgres-db-password )
 
-    echo $PGPASSWORD $KEYCLOAK_PASSWORD $OPERATOR_PASSWORD
     echo "Waiting for PostgreSQL to be ready..."
     until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
       echo "PostgreSQL is not ready yet, waiting..."
@@ -148,15 +146,11 @@ data:
     
     echo "PostgreSQL is ready, running initialization..."
     psql -v ON_ERROR_STOP=1 -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE <<-EOSQL
-      -- Create users only if they don't exist
+      -- Create the DB_USER user only if it doesn't exist (single user for all components, Keycloak included)
       DO \$\$
       BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'operator') THEN
-          CREATE USER operator WITH SUPERUSER PASSWORD '$OPERATOR_PASSWORD';
-        END IF;
-        
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
-          CREATE USER keycloak WITH PASSWORD '$KEYCLOAK_PASSWORD';
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ .Values.DB_USER }}') THEN
+          CREATE USER {{ .Values.DB_USER }} WITH SUPERUSER PASSWORD '$OPERATOR_PASSWORD';
         END IF;
       END
       \$\$;
@@ -168,14 +162,14 @@ data:
       WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ .Values.KEYCLOAK_DB }}')\gexec
 
       -- Grant privileges (idempotent operation)
-      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.DB_DATABASE }} TO operator;
-      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.KEYCLOAK_DB }} TO keycloak;
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.DB_DATABASE }} TO {{ .Values.DB_USER }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.KEYCLOAK_DB }} TO {{ .Values.DB_USER }};
 
-      -- Keycloak schema (KEYCLOAK_SCHEMA), used by console-sso-service with the operator user
+      -- Keycloak schema (KEYCLOAK_SCHEMA), used by console-sso-service with the DB_USER user
       \c {{ .Values.KEYCLOAK_DB }}
       SELECT 'CREATE SCHEMA {{ .Values.KEYCLOAK_SCHEMA }}'
       WHERE NOT EXISTS (SELECT FROM pg_namespace WHERE nspname = '{{ .Values.KEYCLOAK_SCHEMA }}')\gexec
-      GRANT ALL ON SCHEMA {{ .Values.KEYCLOAK_SCHEMA }} TO operator;
+      GRANT ALL ON SCHEMA {{ .Values.KEYCLOAK_SCHEMA }} TO {{ .Values.DB_USER }};
     EOSQL
     echo "Database initialization completed successfully!"
 
@@ -195,7 +189,6 @@ data:
     set -e
 
     export OPERATOR_PASSWORD=$(cat /opt/secrets/operator-db-password )
-    export KEYCLOAK_PASSWORD=$(cat /opt/secrets/keycloak-db-password)     
     export PGPASSWORD=$(cat /opt/secrets/postgres-db-password )
 
     echo "Waiting for PostgreSQL to be ready..."
@@ -205,15 +198,11 @@ data:
     done
     echo "PostgreSQL is ready, running initialization (connected to database $POSTGRES_DB as $POSTGRES_USER)..."
     psql -v ON_ERROR_STOP=1 -h $PGHOST -p $PGPORT -U $POSTGRES_USER -d $POSTGRES_DB <<-EOSQL
-      -- Create users only if they don't exist
+      -- Create the DB_USER user only if it doesn't exist (single user for all components, Keycloak included)
       DO \$\$
       BEGIN
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'operator') THEN
-          CREATE USER operator WITH PASSWORD '$OPERATOR_PASSWORD';
-        END IF;
-        
-        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'keycloak') THEN
-          CREATE USER keycloak WITH PASSWORD '$KEYCLOAK_PASSWORD';
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ .Values.DB_USER }}') THEN
+          CREATE USER {{ .Values.DB_USER }} WITH PASSWORD '$OPERATOR_PASSWORD';
         END IF;
       END
       \$\$;
@@ -226,16 +215,14 @@ data:
       WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ .Values.KEYCLOAK_DB }}')\gexec
 
       -- Grant privileges
-      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.DB_DATABASE }} TO operator;
-      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.KEYCLOAK_DB }} TO operator;
-      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.KEYCLOAK_DB }} TO keycloak;
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.DB_DATABASE }} TO {{ .Values.DB_USER }};
+      GRANT ALL PRIVILEGES ON DATABASE {{ .Values.KEYCLOAK_DB }} TO {{ .Values.DB_USER }};
 
-      -- Keycloak schema (KEYCLOAK_SCHEMA), used by console-sso-service with the operator user
+      -- Keycloak schema (KEYCLOAK_SCHEMA), used by console-sso-service with the DB_USER user
       \c {{ .Values.KEYCLOAK_DB }}
       SELECT 'CREATE SCHEMA {{ .Values.KEYCLOAK_SCHEMA }}'
       WHERE NOT EXISTS (SELECT FROM pg_namespace WHERE nspname = '{{ .Values.KEYCLOAK_SCHEMA }}')\gexec
-      GRANT ALL ON SCHEMA {{ .Values.KEYCLOAK_SCHEMA }} TO operator;
-      GRANT ALL ON SCHEMA {{ .Values.KEYCLOAK_SCHEMA }} TO keycloak;
+      GRANT ALL ON SCHEMA {{ .Values.KEYCLOAK_SCHEMA }} TO {{ .Values.DB_USER }};
     EOSQL
     echo "Exiting database initialization script."
 

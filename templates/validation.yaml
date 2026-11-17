@@ -12,8 +12,8 @@
   {{- fail "ERROR: CustomPostgres.adminlogin must be set when CustomPostgres.enable is true." }}
 {{- end }}
 
-{{/* DB_DATABASE, KEYCLOAK_DB, KEYCLOAK_SCHEMA (and CustomPostgres.admindb): valid lowercase PostgreSQL identifiers */}}
-{{- $dbNames := dict "DB_DATABASE" .Values.DB_DATABASE "KEYCLOAK_DB" .Values.KEYCLOAK_DB "KEYCLOAK_SCHEMA" .Values.KEYCLOAK_SCHEMA }}
+{{/* DB_USER, DB_DATABASE, KEYCLOAK_DB, KEYCLOAK_SCHEMA (and CustomPostgres.admindb): valid lowercase PostgreSQL identifiers */}}
+{{- $dbNames := dict "DB_USER" .Values.DB_USER "DB_DATABASE" .Values.DB_DATABASE "KEYCLOAK_DB" .Values.KEYCLOAK_DB "KEYCLOAK_SCHEMA" .Values.KEYCLOAK_SCHEMA }}
 {{- if .Values.CustomPostgres.enable }}{{ $_ := set $dbNames "CustomPostgres.admindb" (.Values.CustomPostgres.admindb | default "postgres") }}{{ end }}
 {{- range $k, $v := $dbNames }}
   {{- if not (and (kindIs "string" $v) (regexMatch "^[a-z_][a-z0-9_]{0,62}$" $v)) }}

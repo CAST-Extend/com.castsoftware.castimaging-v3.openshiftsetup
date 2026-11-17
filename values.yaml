@@ -83,7 +83,7 @@ CastStorageService:
 CustomPostgres:
   enable: false     # Existing external server will be used
   host: mypostgreshostname
-  adminlogin: postgres     # Admin user used by the init Job to create the operator / keycloak users, the
+  adminlogin: postgres     # Admin user used by the init Job to create the DB_USER user, the
                            #   DB_DATABASE / KEYCLOAK_DB databases and the KEYCLOAK_SCHEMA schema
                            #   (needs CREATEROLE and CREATEDB). Store its password in PostgresDbPassword variable
   admindb: postgres        # Existing database the init Job connects to with adminlogin. Default: postgres.
@@ -91,7 +91,9 @@ CustomPostgres:
                            #   (e.g. managed services: "ibmclouddb" on IBM Cloud Databases).
   port: 2285
 #
-# Database / schema names (embedded and external postgres, same variables as the docker-compose installation)
+# Database user / database / schema names (embedded and external postgres, same variables as the docker-compose installation)
+#   DB_USER:         Postgres user used by all Imaging components to connect, Keycloak (console-sso-service) included.
+#                    Created by the init Job if it does not exist. Its password is OperatorDbPassword (operator-db-password key).
 #   DB_DATABASE:     Imaging database (control-panel, auth-service, analysis data)
 #   KEYCLOAK_DB:     Keycloak (console-sso-service) database. Can be the same as DB_DATABASE.
 #   KEYCLOAK_SCHEMA: Keycloak schema in KEYCLOAK_DB
@@ -103,6 +105,7 @@ CustomPostgres:
 #     DB_DATABASE: imaging
 #     KEYCLOAK_DB: imaging
 #     KEYCLOAK_SCHEMA: keycloak
+DB_USER: operator
 DB_DATABASE: postgres
 KEYCLOAK_DB: keycloak
 KEYCLOAK_SCHEMA: public
@@ -111,31 +114,29 @@ KEYCLOAK_SCHEMA: public
 # Secrets - 2 options:
 # 1) You can provide the name of an existing Kubernetes Secret containing the required passwords:
 existingSecret: ""
-#    If provided, all password variables below will be ignored (PostgresDbPassword, OperatorDbPassword, OperatorDbPasswordCrypted2, KeycloakDbPassword, Neo4jPassword, KeycloakAdminPassword, SPRING_MAIL_PASSWORD)
+#    If provided, all password variables below will be ignored (PostgresDbPassword, OperatorDbPassword, OperatorDbPasswordCrypted2, Neo4jPassword, KeycloakAdminPassword, SPRING_MAIL_PASSWORD)
 #    WARNING: If you use an external secret, it MUST contain the exact following keys:
 #    - postgres-db-password
 #    - operator-db-password
 #    - operator-db-password-crypted2
-#    - keycloak-db-password
 #    - keycloak-admin-password
 #    - neo4j-password
 #    - smtp-password (OPTIONAL)
 # 2) If existingSecret is left empty, the Helm chart will create a default secret named "imaging-pwd-sec" using the encoded variable values
-#    (PostgresDbPassword, OperatorDbPassword, KeycloakDbPassword, Neo4jPassword, KeycloakAdminPassword, SPRING_MAIL_PASSWORD) provided below
+#    (PostgresDbPassword, OperatorDbPassword, Neo4jPassword, KeycloakAdminPassword, SPRING_MAIL_PASSWORD) provided below
 #
 # SQL Database passwords:
 #   Updating any password after deployment requires:
 #      1) Ensuring Imaging is up and running
-#      2) manually updating the password in postgres first (eg. ALTER USER operator WITH PASSWORD 'newpassword' )
-#      3) for the "operator" user only: updating the password in Console "Global configuration" / "CSS and Measurement settings" section
+#      2) manually updating the password in postgres first (eg. ALTER USER operator WITH PASSWORD 'newpassword' , "operator" being the DB_USER value)
+#      3) for the DB_USER user only: updating the password in Console "Global configuration" / "CSS and Measurement settings" section
 #      4) updating the password here in values.yaml with encoding
 #      5) running helm upgrade
 #   Encoding command for Linux: echo -n "mypassword" | base64
 #     for Windows (PowerShell): [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("mypassword"))
 PostgresDbPassword: cG9zdGdyZXM=    # This is the password for the "postgres" user in the embedded postgres database (if CastStorageService.enable=true) 
                                     #                   or for the "CustomPostgres.adminlogin" user in the external postgres (if CustomPostgres.enable=true)
-OperatorDbPassword: Q2FzdEFJUA==
-KeycloakDbPassword: a2V5Y2xvYWs=
+OperatorDbPassword: Q2FzdEFJUA==   # Password of the DB_USER user
 # CAST Operator password also has to be encrypted using cast-imaging-encryption-tool.jar GUI tool
 #   available in Linux installer https://extend.castsoftware.com/timeline#/extension?id=com.castsoftware.imaging.all.docker&version=3.6.5-funcrel
 OperatorDbPasswordCrypted2: CRYPTED2:90B1A6EC1618661401B724DB5AC34595

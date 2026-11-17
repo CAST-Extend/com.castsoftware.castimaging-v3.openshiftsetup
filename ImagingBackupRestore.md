@@ -12,7 +12,7 @@ The `.sh` (bash) and `.bat` (Windows) versions perform the same steps; differenc
 |---|---|---|---|
 | Analysis node **shared directory** | `/opt/cast/shared` (PVC `pvc-shared-datadir`, RWX, mounted by every analysis node, console-service and control-panel) | `shared-dir.tar.gz` | Always |
 | Analysis node **CAST directory** (one per pod) | `/usr/share/CAST` (per-pod volume of `console-analysis-node-core-N`) | `<pod-name>-cast-dir.tar.gz` | Off (`BACKUP_CASTDIR=false`) |
-| **PostgreSQL** (embedded `console-postgres`) | PVC `db-data`: databases `postgres` (Console / Control Panel schemas) and `keycloak`, plus roles `operator` / `keycloak` | `all_databases.backup` (plain SQL from `pg_dumpall`) | On (`BACKUP_POSTGRES=true`) |
+| **PostgreSQL** (embedded `console-postgres`) | PVC `db-data`: databases `postgres` (Console / Control Panel schemas) and `keycloak`, plus role `operator` (and `keycloak` on instances installed before 3.6.9, no longer used) | `all_databases.backup` (plain SQL from `pg_dumpall`) | On (`BACKUP_POSTGRES=true`) |
 | **Neo4j** (`viewer-neo4j-core-0`) | `/var/lib/neo4j/config/neo4j5_data` | `backup/neo4j.tar` (one `neo4j-admin` backup file per database) | Always |
 
 **Not backed up** (see [section 5](#5-what-is-not-backed-up)): Helm values, Kubernetes secrets and other objects, external PostgreSQL instances, the Extend Proxy data volume, and log volumes.
@@ -114,7 +114,7 @@ The application services are still running during this step.
 
 > **Important:** `psql` is run without `ON_ERROR_STOP`, so individual SQL errors do **not** stop the script and the step reports "Postgres restore done." even if statements failed. Always check `postgres_restore.log` for `ERROR:` lines. Errors like `role "operator" already exists` are expected (the roles exist on the fresh instance); others are not.
 >
-> The dump also contains `ALTER ROLE ... PASSWORD` statements: after the restore, the `operator` and `keycloak` database passwords are those of the **source** instance. The target instance must therefore be installed with the same database credentials as the source.
+> The dump also contains `ALTER ROLE ... PASSWORD` statements: after the restore, the `operator` database password (and `keycloak`, if the source still has this role) is that of the **source** instance. The target instance must therefore be installed with the same database credentials as the source.
 
 ### Step 3 — Neo4j
 
