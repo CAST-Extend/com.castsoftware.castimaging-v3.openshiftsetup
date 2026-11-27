@@ -218,8 +218,9 @@ spec:
         - name: logdir
           persistentVolumeClaim:
             claimName: pvc-imagingviewer-v3-etl-logs
-        - name: imaging-etl-dir
-          emptyDir: {}
+        # /opt/imaging/imaging-etl (image content copied by init-folders + upload/ where the imports are decompressed):
+        # emptyDir or ephemeral PVC (WorkVolumes); logs and upload/archive are PVCs mounted inside it
+{{- include "imaging.workVolume" (dict "ctx" $ "name" "imaging-etl-dir" "component" "viewer-etl" "indent" 8) }}
         - name: csvarchive
           persistentVolumeClaim:
             claimName: pvc-imagingviewer-v3-etl-csvarchive

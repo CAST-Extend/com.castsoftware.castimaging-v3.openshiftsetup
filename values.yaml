@@ -347,6 +347,25 @@ componentSecurityContext: {}
 #   (the emptyDir volumes are kept).
 #   Changing this value restarts the pods, and re-runs the init Jobs.
 ReadOnlyRootFilesystem: false
+#
+# OPTIONAL - Writable work volumes:
+#     console-analysis-node /home/carl (analysis engine and node installed at startup: ~2G before any analysis, then
+#                                       caches such as the PHP analyzer one) and /tmp (application backups)
+#                           (only when ReadOnlyRootFilesystem is true)
+#     console-control-panel /tmp (chunked upload of the imported applications: up to the size of the import file)
+#                           (only when ReadOnlyRootFilesystem is true)
+#     viewer-etl            /opt/imaging/imaging-etl (application files + upload/, where the applications uploaded to
+#                           the Viewer are decompressed: several times the size of the uploaded zip)
+#                           (always, whatever ReadOnlyRootFilesystem; logs and upload/archive stay on their PVCs)
+#   With emptyDir volumes, they count in the pod ephemeral-storage limit/quota (eviction "Pod ephemeral local storage
+#   usage exceeds the total limit of containers" when it is too low).
+#     type: emptyDir (default) or ephemeral (generic ephemeral volumes: PVCs created and deleted with the pod on the
+#           DiskClassName StorageClass, content reset at each pod start as with emptyDir; they count in the storage
+#           quota instead of the ephemeral-storage one, and the StorageClass must support dynamic provisioning)
+#     size: size of each ephemeral volume (optional, default 10Gi, only used with type: ephemeral)
+WorkVolumes:
+  type: emptyDir
+  size: 10Gi
 
 #
 # OPTIONAL - Pod priority (spec.priorityClassName of the pods: Deployments, StatefulSets, Jobs)
@@ -599,7 +618,7 @@ ControlPanelResources:
     memory: 800M
   limits:
     cpu: 0.5
-    memory: 2G
+    memory: 6G
 AuthenticationServiceResources:
   requests:
     cpu: 0.2

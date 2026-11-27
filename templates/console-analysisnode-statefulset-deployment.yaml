@@ -283,10 +283,9 @@ spec:
           emptyDir: {}
 {{- end }}
 {{- if .Values.ReadOnlyRootFilesystem }}
-        - name: carl-dir
-          emptyDir: {}
-        - name: tmp
-          emptyDir: {}
+        # /home/carl (~2G at startup) and /tmp (application backups): emptyDir or ephemeral PVC (WorkVolumes)
+{{- include "imaging.workVolume" (dict "ctx" $ "name" "carl-dir" "component" "console-analysis-node" "indent" 8) }}
+{{- include "imaging.workVolume" (dict "ctx" $ "name" "tmp" "component" "console-analysis-node" "indent" 8) }}
         - name: run
           emptyDir: {}
 {{- end }}

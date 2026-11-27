@@ -284,8 +284,8 @@ spec:
           emptyDir: {}
 {{- end }}
 {{- if .Values.ReadOnlyRootFilesystem }}
-        - name: tmp
-          emptyDir: {}
+        # /tmp (chunked upload of the imported applications): emptyDir or ephemeral PVC (WorkVolumes)
+{{- include "imaging.workVolume" (dict "ctx" $ "name" "tmp" "component" "console-control-panel" "indent" 8) }}
         - name: run
           emptyDir: {}
 {{- end }}

@@ -175,6 +175,37 @@ Each line is preceded by a newline, so the include must be written with "{{-".
 {{- end -}}
 {{- end -}}
 
+{{/*
+Writable work volume (value: WorkVolumes): console-analysis-node / console-control-panel with ReadOnlyRootFilesystem,
+viewer-etl always.
+WorkVolumes.type "emptyDir" (default): emptyDir, counted in the pod ephemeral-storage limit/quota.
+WorkVolumes.type "ephemeral": generic ephemeral volume, a PVC created and deleted with the pod (content reset at each
+pod start as with an emptyDir) on the DiskClassName StorageClass, of WorkVolumes.size (default 10Gi): not counted in
+the ephemeral-storage limit/quota, but in the storage quota.
+Called with a dict: "ctx" = root context, "name" = volume name, "component" = imaging.service label of the PVC,
+"indent" = indentation of the volume list item ("- name:").
+Each line is preceded by a newline, so the include must be written with "{{-".
+*/}}
+{{- define "imaging.workVolume" -}}
+{{- $wv := .ctx.Values.WorkVolumes | default dict -}}
+{{- $type := $wv.type | default "emptyDir" -}}
+{{- $vol := dict -}}
+{{- if eq $type "ephemeral" -}}
+{{- $claim := dict
+      "metadata" (dict "labels" (dict "app" "castimaging" "imaging.service" .component))
+      "spec" (dict "accessModes" (list "ReadWriteOnce")
+                   "storageClassName" .ctx.Values.DiskClassName
+                   "resources" (dict "requests" (dict "storage" ($wv.size | default "10Gi")))) -}}
+{{- $_ := set $vol "ephemeral" (dict "volumeClaimTemplate" $claim) -}}
+{{- else if eq $type "emptyDir" -}}
+{{- $_ := set $vol "emptyDir" dict -}}
+{{- else -}}
+{{- fail (printf "WorkVolumes.type must be emptyDir or ephemeral, got %q" $type) -}}
+{{- end }}
+{{ printf "- name: %s" .name | indent .indent }}
+{{ toYaml $vol | indent (add .indent 2 | int) }}
+{{- end -}}
+
 {{- define "imaging.securityContext" -}}
 {{- $v := .ctx.Values -}}
 {{- $out := .defaults -}}
