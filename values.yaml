@@ -32,6 +32,11 @@ Routes:
 CreateLoadBalancer: false
 #
 # OPTIONAL - ExtendProxy
+#   exthostname: hostname (no scheme, no port) used to reach extendproxy from a client workstation (bundle uploads).
+#     - Same value as the FrontEndHost hostname: extendproxy is served on https://<FrontEndHost hostname>/extendproxy
+#       (no additional hostname/DNS/certificate needed).
+#     - Different value: extendproxy is served on its own hostname: https://<exthostname>/
+#   Imaging itself always reaches extendproxy internally (http://extendproxy:8085), whatever the option.
 ExtendProxy:
   enable: false
   exthostname: myextendhost.com

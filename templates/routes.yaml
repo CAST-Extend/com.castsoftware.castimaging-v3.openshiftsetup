@@ -39,6 +39,9 @@ spec:
   wildcardPolicy: None
 ---
   {{- if .Values.ExtendProxy.enable }}
+  {{- /* Same host as FrontEndHost: served under /extendproxy next to the main route (prefix stripped).
+         Different host: dedicated host, served from "/". */}}
+  {{- $extSharedHost := eq .Values.ExtendProxy.exthostname (urlParse .Values.FrontEndHost).hostname }}
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
@@ -48,9 +51,17 @@ metadata:
   annotations:
     {{- include "imaging.metadata" (dict "ctx" $ "kind" "route" "component" "extendproxy" "field" "annotations" "indent" 4) }}
     haproxy.router.openshift.io/timeout: {{ .Values.ExtendProxy.timeoutSeconds }}s
+  {{- if $extSharedHost }}
+    # Rewrite path: /extendproxy/something -> /something
+    haproxy.router.openshift.io/rewrite-target: /
+  {{- end }}
 spec:
   host: {{ .Values.ExtendProxy.exthostname }}
+  {{- if $extSharedHost }}
+  path: /extendproxy
+  {{- else }}
   path: /
+  {{- end }}
   to:
     kind: Service
     name: extendproxy
